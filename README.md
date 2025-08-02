@@ -1,93 +1,142 @@
-# Intelligent Cloud-Based Travel Itinerary Planner
+#  Intelligent Cloud-Based Travel Itinerary Planner
 
+## Project Overview
 
+The Intelligent Cloud-Based Travel Itinerary Planner is an AI-powered travel planning application focused on New Zealand tourism. This project integrates multi-source data (official tourism data, real-time weather information, geographic location data, and user preferences) and utilizes machine learning algorithms to provide personalized travel recommendations and intelligent route planning for users.
 
-## Getting started
+###  Core Features
+- **Intelligent Recommendations**: Personalized attraction recommendations based on user preferences and real-time data
+- **Dynamic Adjustments**: Automatic itinerary optimization based on weather changes and real-time conditions
+- **Route Planning**: Intelligent travel route optimization algorithms
+- **Real-time Data**: Integration of weather, traffic, and local activity information
+- **Cloud Security**: Enterprise-level cloud security protection and data encryption
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+###  Project Highlights
+-  **AI-Driven**: Machine learning recommendation algorithms
+-  **Cloud-Native**: Complete AWS cloud service architecture
+-  **Security-First**: Multi-layer cloud security protection system
+-  **Responsive**: Support for desktop and mobile access
+-  **Real-time**: Dynamic data updates and itinerary adjustments
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+---
 
-## Add your files
+## 🛠️ Technology Stack
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
+### Frontend Technology Stack
+```javascript
+Vue.js 3          // Progressive JavaScript framework
+Bootstrap 5       // Responsive CSS framework
+Leaflet.js        // Lightweight mapping library
+Axios             // HTTP client
+Vite              // Build tool
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/zc199-waikato/intelligent-cloud-based-travel-itinerary-planner.git
-git branch -M main
-git push -uf origin main
+
+### Backend Technology Stack
+```python
+Python 3.9+       // Backend development language
+FastAPI           // Modern high-performance web framework
+SQLAlchemy        // Python ORM
+PyMongo           // MongoDB driver
+Uvicorn           // ASGI server
 ```
 
-## Integrate with your tools
+### Databases
+```sql
+MySQL 8.0         // Primary database (AWS RDS)
+MongoDB           // Document database (user preferences and recommendation data)
+Redis             // Cache database (AWS ElastiCache)
+```
 
-- [ ] [Set up project integrations](https://gitlab.com/zc199-waikato/intelligent-cloud-based-travel-itinerary-planner/-/settings/integrations)
+### Development Tools
+```bash
+Git & GitHub      // Version control
+Docker            // Containerization
+Postman           // API testing
+VS Code           // Development environment
+```
 
-## Collaborate with your team
+---
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+## ☁️ AWS Cloud Services Application
 
-## Test and Deploy
+Our application fully leverages 8 core AWS services to build a complete cloud-native architecture:
 
-Use the built-in continuous integration in GitLab.
+### 1.  Amazon EC2 (Elastic Compute Cloud)
+**Purpose**: Application server hosting
+- Host FastAPI backend applications
+- Handle user requests and business logic
+- Support elastic scaling and load balancing
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+### 2.  Amazon S3 (Simple Storage Service)
+**Purpose**: Object storage service
+- Store user-uploaded images and files
+- Static website resource hosting
+- Data backup and archiving
 
-***
+### 3.  Elastic Load Balancing
+**Purpose**: Load balancing
+- Distribute user requests to multiple EC2 instances
+- Improve system availability and fault tolerance
+- Support health checks and failover
 
-# Editing this README
+### 4.  Amazon CloudWatch
+**Purpose**: Monitoring and logging
+- Real-time monitoring of system performance metrics
+- Collect and analyze application logs
+- Set up alerts and automated responses
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### 5.  AWS IAM (Identity and Access Management)
+**Purpose**: Identity and access management
+- Fine-grained permission control
+- API key and access credential management
+- Multi-factor authentication
 
-## Suggestions for a good README
+### 6.  Amazon CloudFront
+**Purpose**: Content delivery network
+- Global CDN acceleration for static resources
+- Reduce latency and improve user experience
+- Cache optimization and bandwidth savings
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### 7.  Amazon SNS (Simple Notification Service)
+**Purpose**: Message notification service
+- Send itinerary change notifications
+- Weather alerts and reminders
+- System status notifications
 
-## Name
-Choose a self-explaining name for your project.
+### 8.  AWS Secrets Manager
+**Purpose**: Key management service
+- Securely store API keys and database credentials
+- Automatic key rotation
+- Prevent sensitive information leakage
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+---
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+##  Project Management
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### Trello Project Board
+🔗 **Project Management Link**: https://trello.com/b/80RlBs5c/527-project
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+The board includes the following lists:
+- ** Requirements Analysis** - Functional requirements and user stories
+- ** Architecture Design** - System design and technology selection
+- ** In Development** - Ongoing development tasks
+- ** Testing Phase** - Quality assurance and testing tasks
+- ** Deployment** - Deployment and operations tasks
+- ** Completed** - Completed milestones
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+---
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+##  Team Members
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+| Name | Student ID | Role | Main Responsibilities |
+|------|------------|------|----------------------|
+| Aliyyan Wijaya | 1670316 | Frontend Development Engineer | Vue.js development, UI/UX design |
+| Bai Lu | 1671298 | Project Manager | Project management, documentation |
+| Jibin Xue | 1664138 | Backend Development Engineer | FastAPI development, database design |
+| Simin Cheng | 1663732 | Cloud Infrastructure Engineer | AWS deployment, security configuration |
+| Zhengrong Chen | 1660321 | AI/Data Engineer | Recommendation algorithms, data analysis |
+| Ziqi Lin | 1674249 | Quality Assurance Engineer | Testing, integration verification |
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+---
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+** Let's create an intelligent travel experience together!**
