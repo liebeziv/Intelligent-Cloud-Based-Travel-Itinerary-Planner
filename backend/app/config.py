@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # AWS configurations
-    AWS_REGION: str = "ap-southeast-2"
+    AWS_REGION: str = "us-east-1"
     S3_BUCKET_NAME: str = "travel-planner-assets"
     
     # External API configurations

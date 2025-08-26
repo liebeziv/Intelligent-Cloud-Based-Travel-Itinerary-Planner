@@ -1,65 +1,49 @@
-﻿from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-import uvicorn
+﻿import uuid
+import app
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from starlette.responses import JSONResponse
+from . import db, auth, s3utils, sns_utils, models
 
-app = FastAPI(
-    title="Travel Planner API",
-    description="Intelligent Cloud-Based Travel Itinerary Planner",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
-)
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/")
-async def root():
-    return {
-        "message": "Travel Planner API", 
-        "version": "1.0.0", 
-        "status": "running"
-    }
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-
-@app.get("/api/attractions")
-async def get_attractions():
-    return {
-        "attractions": [
-            {
-                "id": 1,
-                "name": "Milford Sound",
-                "description": "Famous fiord in Fiordland National Park",
-                "category": "nature",
-                "rating": 4.8
-            },
-            {
-                "id": 2,
-                "name": "Queenstown Skyline Gondola",
-                "description": "Scenic gondola ride",
-                "category": "adventure", 
-                "rating": 4.6
-            }
-        ]
-    }
-
-@app.post("/api/auth/login")
-async def login():
-    return {"access_token": "fake-token", "token_type": "bearer"}
+# call once on startup in local/dev (or use migrations)
+@app.on_event("startup")
+def startup_event():
+    db.init_db()
 
 @app.post("/api/auth/register")
-async def register():
-    return {"message": "User registered successfully"}
+def register(payload: dict, dbs: Session = Depends(db.SessionLocal)):
+    email = payload.get("email"); password = payload.get("password"); name = payload.get("name")
+    if not email or not password:
+        return JSONResponse({"detail":"email+password required"}, status_code=400)
+    if dbs.query(models.User).filter_by(email=email).first():
+        return JSONResponse({"detail":"email exists"}, status_code=400)
+    user = auth.create_user(dbs, email, password, name)
+    return {"id": user.id, "email": user.email}
 
-if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+@app.post("/api/auth/login")
+def login(payload: dict, dbs: Session = Depends(db.SessionLocal)):
+    email = payload.get("email"); password = payload.get("password")
+    user = auth.authenticate_user(dbs, email, password)
+    if not user:
+        return JSONResponse({"detail":"invalid credentials"}, status_code=401)
+    token = auth.create_access_token({"sub": user.id, "email": user.email})
+    return {"access_token": token, "token_type": "bearer"}
+
+@app.post("/api/itineraries")
+def create_itinerary(payload: dict, current_user=Depends(auth.get_current_user), dbs: Session = Depends(db.SessionLocal)):
+    import uuid, datetime
+    it_id = str(uuid.uuid4())
+    key = f"itineraries/{current_user.id}/{it_id}.json"
+    obj = {"id": it_id, "owner": current_user.id, "title": payload.get("title"), "items": payload.get("items", []), "createdAt": datetime.datetime.utcnow().isoformat()}
+    s3utils.put_json_object(key, obj)
+    it = models.Itinerary(id=it_id, owner_id=current_user.id, title=payload.get("title"), s3_key=key)
+    dbs.add(it); dbs.commit()
+    # demo SNS
+    sns_utils.publish(f"New itinerary {it_id} by {current_user.email}", subject="Itinerary Created")
+    return {"id": it_id, "s3_key": key}
+
+@app.get("/api/upload-url")
+def upload_url(filename: str, current_user=Depends(auth.get_current_user)):
+    key = f"uploads/{current_user.id}/{uuid.uuid4()}_{filename}"
+    url = s3utils.get_presigned_put_url(key)
+    return {"url": url, "key": key}
