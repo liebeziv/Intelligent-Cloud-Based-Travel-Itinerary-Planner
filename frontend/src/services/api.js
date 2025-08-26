@@ -9,7 +9,7 @@ const api = axios.create({
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token')
   if (token) {
-    config.headers.Authorization = Bearer ${token}
+    config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
@@ -33,12 +33,12 @@ export const authAPI = {
 
 export const attractionsAPI = {
   getAll: (params) => api.get('/api/attractions', { params }),
-  getById: (id) => api.get(/api/attractions/${id})
+  getById: (id) => api.get(`/api/attractions/${id}`)
 }
 
 export const itineraryAPI = {
-  create: (data) => api.post('/api/itinerary', data),
-  getByUser: (userId) => api.get(/api/itinerary/user/${userId})
+  create: (data) => api.post('/api/itineraries', data),
+  getByUser: (userId) => api.get(`/api/itineraries/user/${userId}`)
 }
 
 export default api
