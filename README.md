@@ -139,4 +139,4 @@ The board includes the following lists:
 
 ---
 
-** Let's create an intelligent travel experience together!**
+Let's create an intelligent travel experience together!
