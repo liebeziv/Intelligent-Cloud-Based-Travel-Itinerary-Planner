@@ -6,10 +6,27 @@
         <label for="email" class="form-label">Email</label>
         <input type="email" id="email" v-model="email" class="form-control" required>
       </div>
+
       <div class="mb-3">
         <label for="password" class="form-label">Password</label>
-        <input type="password" id="password" v-model="password" class="form-control" required>
+        <div class="input-group">
+          <input
+            :type="showPassword ? 'text' : 'password'"
+            id="password"
+            v-model="password"
+            class="form-control"
+            required
+          >
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            @click="togglePassword"
+          >
+            {{ showPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
       </div>
+
       <button type="submit" class="btn btn-primary w-100">Login</button>
     </form>
     <p class="mt-3">Don't have an account? <router-link to="/register">Register here</router-link></p>
@@ -24,10 +41,15 @@ export default {
   data() {
     return {
       email: '',
-      password: ''
+      password: '',
+      showPassword: false
     }
   },
   methods: {
+    togglePassword() {
+      this.showPassword = !this.showPassword
+    },
+
     async login() {
       try {
         const response = await authAPI.login({
@@ -35,11 +57,9 @@ export default {
           password: this.password
         })
 
-        // store JWT token in localStorage
         localStorage.setItem('token', response.data.access_token)
-
         alert('Login successful!')
-        this.$router.push('/')  // redirect to home page
+        this.$router.push('/') 
 
       } catch (error) {
         console.error(error)
