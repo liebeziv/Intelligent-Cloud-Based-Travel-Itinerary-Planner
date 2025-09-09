@@ -1,9 +1,10 @@
 ﻿import uuid
-import app
-from fastapi import Depends
+from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 from . import db, auth, s3utils, sns_utils, models
+
+app = FastAPI()
 
 # call once on startup in local/dev (or use migrations)
 @app.on_event("startup")
@@ -31,14 +32,13 @@ def login(payload: dict, dbs: Session = Depends(db.SessionLocal)):
 
 @app.post("/api/itineraries")
 def create_itinerary(payload: dict, current_user=Depends(auth.get_current_user), dbs: Session = Depends(db.SessionLocal)):
-    import uuid, datetime
+    import datetime
     it_id = str(uuid.uuid4())
     key = f"itineraries/{current_user.id}/{it_id}.json"
     obj = {"id": it_id, "owner": current_user.id, "title": payload.get("title"), "items": payload.get("items", []), "createdAt": datetime.datetime.utcnow().isoformat()}
     s3utils.put_json_object(key, obj)
     it = models.Itinerary(id=it_id, owner_id=current_user.id, title=payload.get("title"), s3_key=key)
     dbs.add(it); dbs.commit()
-    # demo SNS
     sns_utils.publish(f"New itinerary {it_id} by {current_user.email}", subject="Itinerary Created")
     return {"id": it_id, "s3_key": key}
 
