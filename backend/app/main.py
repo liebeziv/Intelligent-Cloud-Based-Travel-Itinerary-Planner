@@ -1,44 +1,70 @@
 ﻿import uuid
-from fastapi import FastAPI, Depends
+import datetime
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from starlette.responses import JSONResponse
 from . import db, auth, s3utils, sns_utils, models
 
-app = FastAPI()
+app = FastAPI(title="Intelligent Travel Planner Backend")
 
-# call once on startup in local/dev (or use migrations)
+# Startup
 @app.on_event("startup")
 def startup_event():
     db.init_db()
 
+# Pydantic Models
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: str | None = None
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class ItineraryRequest(BaseModel):
+    title: str
+    items: list[str] = []
+
+# Auth Endpoints
 @app.post("/api/auth/register")
-def register(payload: dict, dbs: Session = Depends(db.SessionLocal)):
-    email = payload.get("email"); password = payload.get("password"); name = payload.get("name")
-    if not email or not password:
-        return JSONResponse({"detail":"email+password required"}, status_code=400)
-    if dbs.query(models.User).filter_by(email=email).first():
-        return JSONResponse({"detail":"email exists"}, status_code=400)
-    user = auth.create_user(dbs, email, password, name)
-    return {"id": user.id, "email": user.email}
+def register(payload: RegisterRequest, dbs: Session = Depends(db.get_db)):
+    existing_user = dbs.query(models.User).filter(models.User.email == payload.email).first()
+    if existing_user:
+        return JSONResponse({"detail": "email exists"}, status_code=400)
+
+    user = auth.create_user(dbs, payload.email, payload.password, payload.name)
+    return {"id": user.id, "email": user.email, "name": user.name}
 
 @app.post("/api/auth/login")
-def login(payload: dict, dbs: Session = Depends(db.SessionLocal)):
-    email = payload.get("email"); password = payload.get("password")
-    user = auth.authenticate_user(dbs, email, password)
+def login(payload: LoginRequest, dbs: Session = Depends(db.get_db)):
+    user = auth.authenticate_user(dbs, payload.email, payload.password)
     if not user:
-        return JSONResponse({"detail":"invalid credentials"}, status_code=401)
+        return JSONResponse({"detail": "invalid credentials"}, status_code=401)
+
     token = auth.create_access_token({"sub": user.id, "email": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
+# Itinerary Endpoints
 @app.post("/api/itineraries")
-def create_itinerary(payload: dict, current_user=Depends(auth.get_current_user), dbs: Session = Depends(db.SessionLocal)):
-    import datetime
+def create_itinerary(payload: ItineraryRequest, current_user=Depends(auth.get_current_user), dbs: Session = Depends(db.get_db)):
     it_id = str(uuid.uuid4())
     key = f"itineraries/{current_user.id}/{it_id}.json"
-    obj = {"id": it_id, "owner": current_user.id, "title": payload.get("title"), "items": payload.get("items", []), "createdAt": datetime.datetime.utcnow().isoformat()}
+    obj = {
+        "id": it_id,
+        "owner": current_user.id,
+        "title": payload.title,
+        "items": payload.items,
+        "createdAt": datetime.datetime.utcnow().isoformat()
+    }
+    # Upload to S3
     s3utils.put_json_object(key, obj)
-    it = models.Itinerary(id=it_id, owner_id=current_user.id, title=payload.get("title"), s3_key=key)
-    dbs.add(it); dbs.commit()
+    # Save metadata to DB
+    it = models.Itinerary(id=it_id, owner_id=current_user.id, title=payload.title, s3_key=key)
+    dbs.add(it)
+    dbs.commit()
+    # Send SNS notification
     sns_utils.publish(f"New itinerary {it_id} by {current_user.email}", subject="Itinerary Created")
     return {"id": it_id, "s3_key": key}
 
@@ -47,3 +73,8 @@ def upload_url(filename: str, current_user=Depends(auth.get_current_user)):
     key = f"uploads/{current_user.id}/{uuid.uuid4()}_{filename}"
     url = s3utils.get_presigned_put_url(key)
     return {"url": url, "key": key}
+
+# Health Check
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

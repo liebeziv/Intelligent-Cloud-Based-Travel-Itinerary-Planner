@@ -9,36 +9,71 @@ from . import db, models
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXP_MINUTES", "480"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is not set")
+
 
 def create_user(dbs: Session, email: str, password: str, name: str = None):
-    user = models.User(id=str(uuid.uuid4()), email=email, password_hash=pwd_ctx.hash(password), name=name)
-    dbs.add(user); dbs.commit(); dbs.refresh(user)
+    user_id = str(uuid.uuid4())
+    password_hash = pwd_ctx.hash(password)
+
+    user = models.User(
+        id=user_id,
+        email=email,
+        password_hash=password_hash,
+        name=name
+    )
+
+    dbs.add(user)
+    dbs.commit()
+    dbs.refresh(user)
+
     return user
 
 def authenticate_user(dbs: Session, email: str, password: str):
-    user = dbs.query(models.User).filter_by(email=email).first()
-    if not user or not pwd_ctx.verify(password, user.password_hash):
+    user = dbs.query(models.User).filter(models.User.email == email).first()
+    if not user:
         return None
+
+    if not pwd_ctx.verify(password, user.password_hash):
+        return None
+
     return user
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
-    exp = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": exp})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-async def get_current_user(request: Request, dbs: Session = Depends(db.SessionLocal)):
-    auth = request.headers.get("authorization")
-    if not auth or not auth.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    token = auth.split(" ", 1)[1]
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    uid = payload.get("sub")
-    user = dbs.query(models.User).filter_by(id=uid).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(request: Request, dbs: Session = Depends(db.get_db)):
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    authorization = request.headers.get("authorization")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise credentials_exception
+
+    token = authorization.split(" ", 1)[1]
+
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    user_id: str = payload.get("sub")
+    if user_id is None:
+        raise credentials_exception
+
+    user = dbs.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise credentials_exception
+
     return user
