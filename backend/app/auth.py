@@ -54,7 +54,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 
-async def get_current_user(request: Request, dbs: Session = Depends(db.get_db)):
+def get_current_user(request: Request, dbs: Session = Depends(db.get_db)):
     credentials_exception = HTTPException(
         status_code=401,
         detail="Could not validate credentials",
