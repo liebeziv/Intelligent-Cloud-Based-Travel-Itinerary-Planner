@@ -1,6 +1,6 @@
 ﻿import uuid
 import app
-from fastapi import Depends
+from fastapi import FASTAPI, Depends
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 from . import db, auth, s3utils, sns_utils, models
@@ -47,3 +47,44 @@ def upload_url(filename: str, current_user=Depends(auth.get_current_user)):
     key = f"uploads/{current_user.id}/{uuid.uuid4()}_{filename}"
     url = s3utils.get_presigned_put_url(key)
     return {"url": url, "key": key}
+
+from .api.routes.recommendations import router as recommendation_router
+
+#  Creating a FastAPI application instance
+app = FastAPI(
+    title="Intelligent cloud-based travel itinerary planner",
+    description="AI-powered travel itinerary planner focused on New Zealand tourism",
+    version="1.0.0"
+)
+
+#  Adding recommendation system routes
+app.include_router(recommendation_router)
+
+# Startup Events - Initialising the database and recommender system
+@app.on_event("startup")
+async def startup_event():
+    # Original database initialisation
+    db.init_db()
+
+    #  Initialising recommendation system
+    try:
+        from .api.routes.recommendations import recommendation_service
+        from .data.sample_attractions import SAMPLE_NZ_ATTRACTIONS
+        await recommendation_service.initialize(SAMPLE_NZ_ATTRACTIONS)
+        print("✅ Recommendation system initialised successfully")
+    except Exception as e:
+        print(f"❌ Recommendation system initialisation failed: {e}")
+
+@app.get("/")
+def read_root():
+    return {
+        "message": "Intelligent cloud-based travel itinerary planner API",
+        "version": "1.0.0",
+        "features": ["User Authentication", "Itinerary Management", "AI Recommendation System", "File Upload"],
+        "docs": "/docs"
+    }
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "service": "travel-planner-api"}
+
