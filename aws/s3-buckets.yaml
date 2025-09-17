@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 buckets (prod) with encryption, versioning, public access block, TLS-only; Assets bucket includes CORS for browser uploads.
+
+Resources:
+  AssetsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "travel-planner-assets-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins: ["*"]
+            AllowedMethods: ["GET","PUT","POST"]
+            AllowedHeaders: ["*"]
+            ExposedHeaders: ["ETag"]
+            MaxAge: 3000
+      Tags:
+        - Key: Project
+          Value: IntelligentTravelPlanner
+        - Key: Env
+          Value: prod
+        - Key: Owner
+          Value: !Ref AWS::AccountId
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "travel-planner-frontend-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: IntelligentTravelPlanner
+        - Key: Env
+          Value: prod
+        - Key: Owner
+          Value: !Ref AWS::AccountId
+
+  AssetsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AssetsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt AssetsBucket.Arn
+              - !Sub "${AssetsBucket.Arn}/*"
+            Condition:
+              Bool: { aws:SecureTransport: "false" }
+          - Sid: DenyUnEncryptedObjectUploads
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:PutObject"
+            Resource: !Sub "${AssetsBucket.Arn}/*"
+            Condition:
+              StringNotEquals:
+                s3:x-amz-server-side-encryption: AES256
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt FrontendBucket.Arn
+              - !Sub "${FrontendBucket.Arn}/*"
+            Condition:
+              Bool: { aws:SecureTransport: "false" }
+          - Sid: DenyUnEncryptedObjectUploads
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:PutObject"
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+            Condition:
+              StringNotEquals:
+                s3:x-amz-server-side-encryption: AES256
+
+Outputs:
+  AssetsBucketName:
+    Description: Name of the assets S3 bucket
+    Value: !Ref AssetsBucket
+  FrontendBucketName:
+    Description: Name of the frontend S3 bucket
+    Value: !Ref FrontendBucket
+  AssetsBucketArn:
+    Description: ARN of the assets S3 bucket
+    Value: !GetAtt AssetsBucket.Arn
+  FrontendBucketArn:
+    Description: ARN of the frontend S3 bucket
+    Value: !GetAtt FrontendBucket.Arn
