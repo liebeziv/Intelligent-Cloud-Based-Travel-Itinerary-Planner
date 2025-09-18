@@ -53,7 +53,7 @@ docker build -t travel-backend .
 Run container
 
 ```
-docker run -p 8000:8000 --env-file .env travel-backend
+docker run -p 8000:8000 --env-file ../.env travel-backend
 ```
 
 Backend will be available at:
