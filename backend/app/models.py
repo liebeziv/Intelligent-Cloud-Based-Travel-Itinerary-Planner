@@ -19,3 +19,4 @@ class Itinerary(Base):
     title = Column(String(255))
     s3_key = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
