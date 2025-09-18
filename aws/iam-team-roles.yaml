@@ -86,6 +86,39 @@ Resources:
                   - dynamodb:Query
                   - dynamodb:Scan
                 Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/trip-planner-*"
+              # SNS permissions for notifications
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                  - sns:GetTopicAttributes
+                  - sns:ListTopics
+                Resource: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:topic/trip-planner-*"
+              # CloudWatch monitoring and alarms
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricAlarm
+                  - cloudwatch:DeleteAlarms
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:PutMetricData
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                  - cloudwatch:GetDashboard
+                  - cloudwatch:PutDashboard
+                  - cloudwatch:DeleteDashboards
+                  - cloudwatch:ListDashboards
+                Resource: "*"
+              # Basic console access for monitoring
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeImages
+                  - ec2:DescribeSecurityGroups
+                  - s3:ListAllMyBuckets
+                  - s3:GetBucketLocation
+                  - dynamodb:ListTables
+                  - sns:ListTopics
+                  - secretsmanager:ListSecrets
+                Resource: "*"
 
   # ---------------- FrontendPublisher ----------------
   FrontendPublisherRole:
@@ -118,6 +151,15 @@ Resources:
                 Condition:
                   StringEquals:
                     cloudfront:DistributionId: !Ref FrontendDistributionId
+              # Basic console access for monitoring
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:ListStacks
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                  - s3:ListAllMyBuckets
+                Resource: "*"
 
   # ---------------- Observer (read-only visibility) ----------------
   ObserverRole:
@@ -200,6 +242,16 @@ Resources:
                   - secretsmanager:UntagResource
                   - secretsmanager:ListSecrets
                 Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:trip-planner/*"
+              # Basic console access for monitoring
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:ListStacks
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                  - ec2:DescribeInstances
+                  - s3:ListAllMyBuckets
+                Resource: "*"
 
 Outputs:
   BackendDeployerRoleArn:

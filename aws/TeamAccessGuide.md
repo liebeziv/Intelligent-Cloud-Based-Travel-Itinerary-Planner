@@ -4,10 +4,18 @@
 
 **Account ID:** `849354442724`
 **Region:** `us-east-1`
-**Stacks you’ll see:**
+**Stacks you'll see:**
 
 * `trip-planner-iam-users` (creates our 6 IAM users & group)
 * `trip-planner-team-roles` (creates 5 reusable roles)
+
+## ⚠️ Quick Start Notice
+
+**For most operations, use AWS CLI or CloudShell instead of the Console:**
+- **Console**: Good for viewing and monitoring resources
+- **CLI/CloudShell**: Required for most modification operations due to resource scope restrictions
+
+**CloudShell Access**: Login to AWS Console → Click the terminal icon in the top navigation bar.
 
 
 ---
@@ -36,7 +44,7 @@ First login:
 
 ## 2) Team roles you can switch into (least privilege)
 
-You’ll **assume** one or more of these roles to do specific tasks. Multiple roles are allowed.
+You'll **assume** one or more of these roles to do specific tasks. Multiple roles are allowed.
 
 | Role                             | What you can do                                                                 | Typical tasks                                              |
 | -------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------- |
@@ -46,6 +54,40 @@ You’ll **assume** one or more of these roles to do specific tasks. Multiple ro
 | `tp-SecretsAdmin-<account>`      | Manage Secrets in `trip-planner/*` namespace                                    | Create/update app secrets/keys                             |
 
 > Exact bucket name, distribution ID, etc. are preconfigured in the role policies.
+
+### ⚠️ Important: Console vs CLI Usage
+
+**Console Limitations:**
+- You can **browse and view** all AWS services in the console
+- But **modification operations** may be limited due to resource scope restrictions
+
+**Recommended Usage:**
+- **Use AWS CLI or CloudShell** for most operations
+- **Use Console** for monitoring and viewing resources
+
+| Role | Console | CLI/CloudShell |
+|------|---------|----------------|
+| **BackendDeployer** | View only | Full DynamoDB, SNS, CloudFormation |
+| **FrontendPublisher** | View only | Full S3, CloudFront |
+| **Observer** | View only | Read-only access |
+| **SecretsAdmin** | View only | Full Secrets Manager |
+
+### How to Use CloudShell:
+1. Login to AWS Console
+2. Click the CloudShell icon (terminal) in the top navigation
+3. Use CLI commands directly in the browser
+
+### Example Commands:
+```bash
+# List DynamoDB tables
+aws dynamodb list-tables
+
+# Deploy CloudFormation stack
+aws cloudformation deploy --template-file template.yaml
+
+# Upload to S3
+aws s3 cp file.txt s3://bucket-name/
+```
 
 ### Detailed Role Permissions
 
