@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFront distribution (OAC) for travel-planner frontend S3 bucket (private).
+
+Parameters: {}
+Mappings: {}
+Conditions: {}
+
+Resources:
+  FrontendOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: frontend-oac
+        Description: OAC for private S3 origin
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Trip Planner Frontend (OAC → S3 private)
+        DefaultRootObject: index.html
+        IPV6Enabled: true
+        Origins:
+          - Id: s3-frontend-origin
+            DomainName: !Sub "travel-planner-frontend-${AWS::AccountId}.s3.${AWS::Region}.amazonaws.com"
+            S3OriginConfig: {}                  # OAC
+            OriginAccessControlId: !Ref FrontendOAC
+        DefaultCacheBehavior:
+          TargetOriginId: s3-frontend-origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          # AWS Managed "CachingOptimized" policy
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+Outputs:
+  FrontendDistributionId:
+    Description: CloudFront Distribution ID
+    Value: !Ref FrontendDistribution
+    Export:
+      Name: trip-planner-frontend-cf-DistributionId
+  FrontendDistributionDomainName:
+    Description: CloudFront domain you will use in the browser
+    Value: !GetAtt FrontendDistribution.DomainName
+    Export:
+      Name: trip-planner-frontend-cf-DomainName
