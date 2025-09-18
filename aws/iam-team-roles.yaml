@@ -1,0 +1,216 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM roles for Trip Planner team - BackendDeployer, FrontendPublisher, Observer, SecretsAdmin.
+
+Parameters:
+  TrustedPrincipalArns:
+    Type: CommaDelimitedList
+    Description: Comma-separated ARNs of IAM Users or Roles allowed to assume these roles (same account).
+
+  # Project-scoped values
+  BackendStackName:
+    Type: String
+    Default: "trip-planner-backend"
+    Description: CloudFormation stack name for the backend.
+  BackendInstanceRoleName:
+    Type: String
+    Default: "trip-planner-backend-role-849354442724"
+    Description: EC2 instance role name used by the backend (for iam:PassRole constraint).
+  FrontendBucketName:
+    Type: String
+    Default: "travel-planner-frontend-849354442724"
+    Description: S3 bucket used to host frontend artifacts.
+  FrontendDistributionId:
+    Type: String
+    Default: "EIQO53JTN0IXU"
+    Description: CloudFront distribution ID for frontend invalidations.
+
+Resources:
+  # ---------------- BackendDeployer ----------------
+  BackendDeployerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "tp-BackendDeployer-${AWS::AccountId}"
+      MaxSessionDuration: 43200
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { AWS: !Ref TrustedPrincipalArns }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cfn-update-backend-stack
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Limit to the specified backend stack
+              - Effect: Allow
+                Action:
+                  - cloudformation:UpdateStack
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:ListStackResources
+                  - cloudformation:ValidateTemplate
+                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${BackendStackName}/*"
+              # Only pass the backend EC2 instance role (needed when CFN updates LT/ASG)
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${BackendInstanceRoleName}"
+                Condition:
+                  StringEquals: { iam:PassedToService: ec2.amazonaws.com }
+              # Logs read for project log groups (adjust if you use different names)
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:GetLogEvents
+                  - logs:FilterLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/trip-planner/*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/trip-planner/*:log-stream:*"
+              # DynamoDB access for project tables
+              - Effect: Allow
+                Action:
+                  - dynamodb:CreateTable
+                  - dynamodb:UpdateTable
+                  - dynamodb:DeleteTable
+                  - dynamodb:DescribeTable
+                  - dynamodb:ListTables
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/trip-planner-*"
+
+  # ---------------- FrontendPublisher ----------------
+  FrontendPublisherRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "tp-FrontendPublisher-${AWS::AccountId}"
+      MaxSessionDuration: 43200
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { AWS: !Ref TrustedPrincipalArns }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: s3-and-cf-publish
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # S3 writes to the frontend bucket
+              - Effect: Allow
+                Action: ["s3:ListBucket"]
+                Resource: !Sub "arn:aws:s3:::${FrontendBucketName}"
+              - Effect: Allow
+                Action: ["s3:PutObject","s3:DeleteObject"]
+                Resource: !Sub "arn:aws:s3:::${FrontendBucketName}/*"
+              # CloudFront invalidations scoped by distribution ID (API is resource-*; use condition)
+              - Effect: Allow
+                Action: ["cloudfront:CreateInvalidation","cloudfront:GetInvalidation"]
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudfront:DistributionId: !Ref FrontendDistributionId
+
+  # ---------------- Observer (read-only visibility) ----------------
+  ObserverRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "tp-Observer-${AWS::AccountId}"
+      MaxSessionDuration: 43200
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { AWS: !Ref TrustedPrincipalArns }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+        - arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess
+      Policies:
+        - PolicyName: trip-planner-read-only
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Logs read for project log groups
+              - Effect: Allow
+                Action: [ "logs:DescribeLogGroups", "logs:DescribeLogStreams", "logs:GetLogEvents", "logs:FilterLogEvents" ]
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/trip-planner/*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/trip-planner/*:log-stream:*"
+              # S3 read access for project buckets
+              - Effect: Allow
+                Action: [ "s3:ListBucket", "s3:GetObject" ]
+                Resource:
+                  - !Sub "arn:aws:s3:::${FrontendBucketName}"
+                  - !Sub "arn:aws:s3:::${FrontendBucketName}/*"
+                  - !Sub "arn:aws:s3:::travel-planner-assets*"
+                  - !Sub "arn:aws:s3:::travel-planner-assets*/*"
+              # SNS read access for project topics
+              - Effect: Allow
+                Action: [ "sns:ListTopics", "sns:GetTopicAttributes", "sns:ListSubscriptionsByTopic" ]
+                Resource: "*"
+                Condition:
+                  StringLike:
+                    sns:TopicName: "*trip-planner*"
+              # EC2 read access for project instances
+              - Effect: Allow
+                Action: [ "ec2:DescribeInstances", "ec2:DescribeImages", "ec2:DescribeSecurityGroups" ]
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    "ec2:ResourceTag/Project": "trip-planner"
+
+  # ---------------- SecretsAdmin ----------------
+  SecretsAdminRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "tp-SecretsAdmin-${AWS::AccountId}"
+      MaxSessionDuration: 43200
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { AWS: !Ref TrustedPrincipalArns }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: secrets-namespaced-admin
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:UpdateSecret
+                  - secretsmanager:PutSecretValue
+                  - secretsmanager:DeleteSecret
+                  - secretsmanager:RestoreSecret
+                  - secretsmanager:RotateSecret
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:TagResource
+                  - secretsmanager:UntagResource
+                  - secretsmanager:ListSecrets
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:trip-planner/*"
+
+Outputs:
+  BackendDeployerRoleArn:
+    Description: ARN of BackendDeployer role
+    Value: !GetAtt BackendDeployerRole.Arn
+  FrontendPublisherRoleArn:
+    Description: ARN of FrontendPublisher role
+    Value: !GetAtt FrontendPublisherRole.Arn
+  ObserverRoleArn:
+    Description: ARN of Observer role
+    Value: !GetAtt ObserverRole.Arn
+  SecretsAdminRoleArn:
+    Description: ARN of SecretsAdmin role
+    Value: !GetAtt SecretsAdminRole.Arn

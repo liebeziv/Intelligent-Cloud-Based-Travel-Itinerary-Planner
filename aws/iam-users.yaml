@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create 6 IAM users + one group that can Assume the team roles (ProjectAdmin, BackendDeployer, FrontendPublisher, Observer, SecretsAdmin).
+
+Parameters:
+  TeamUserNames:
+    Type: CommaDelimitedList
+    Description: "ali,jasper,lubai,links,simin,ziqi"
+
+Resources:
+  MembersGroup:
+    Type: AWS::IAM::Group
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      GroupName: !Sub "trip-planner-members-${AWS::AccountId}"
+
+  # Policy that lets members assume the five function roles
+  AllowAssumeTeamRolesPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "TP-AllowAssumeTeamRoles-${AWS::AccountId}"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Resource:
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/tp-ProjectAdmin-${AWS::AccountId}"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/tp-BackendDeployer-${AWS::AccountId}"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/tp-FrontendPublisher-${AWS::AccountId}"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/tp-Observer-${AWS::AccountId}"
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/tp-SecretsAdmin-${AWS::AccountId}"
+      Groups:
+        - !Ref MembersGroup
+
+  User1:
+    Type: AWS::IAM::User
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserName: !Select [0, !Ref TeamUserNames]
+      Groups: [ !Ref MembersGroup ]
+      Tags:
+        - { Key: Project, Value: TripPlanner }
+        - { Key: Team, Value: Members }
+
+  User2:
+    Type: AWS::IAM::User
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserName: !Select [1, !Ref TeamUserNames]
+      Groups: [ !Ref MembersGroup ]
+      Tags:
+        - { Key: Project, Value: TripPlanner }
+        - { Key: Team, Value: Members }
+
+  User3:
+    Type: AWS::IAM::User
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserName: !Select [2, !Ref TeamUserNames]
+      Groups: [ !Ref MembersGroup ]
+      Tags:
+        - { Key: Project, Value: TripPlanner }
+        - { Key: Team, Value: Members }
+
+  User4:
+    Type: AWS::IAM::User
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserName: !Select [3, !Ref TeamUserNames]
+      Groups: [ !Ref MembersGroup ]
+      Tags:
+        - { Key: Project, Value: TripPlanner }
+        - { Key: Team, Value: Members }
+
+  User5:
+    Type: AWS::IAM::User
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserName: !Select [4, !Ref TeamUserNames]
+      Groups: [ !Ref MembersGroup ]
+      Tags:
+        - { Key: Project, Value: TripPlanner }
+        - { Key: Team, Value: Members }
+
+  User6:
+    Type: AWS::IAM::User
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserName: !Select [5, !Ref TeamUserNames]
+      Groups: [ !Ref MembersGroup ]
+      Tags:
+        - { Key: Project, Value: TripPlanner }
+        - { Key: Team, Value: Members }
+
+Outputs:
+  GroupName:
+    Description: IAM group for team members
+    Value: !Ref MembersGroup
+  UserArns:
+    Description: Comma-separated ARNs of the six users
+    Value: !Join
+      - ","
+      - [ !GetAtt User1.Arn, !GetAtt User2.Arn, !GetAtt User3.Arn, !GetAtt User4.Arn, !GetAtt User5.Arn, !GetAtt User6.Arn ]
