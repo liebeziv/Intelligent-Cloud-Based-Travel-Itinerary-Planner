@@ -25,11 +25,104 @@ Resources:
           - Effect: Allow
             Action: sts:AssumeRole
             Resource:
-              - !Sub "arn:aws:iam::${AWS::AccountId}:role/tp-ProjectAdmin-${AWS::AccountId}"
               - !Sub "arn:aws:iam::${AWS::AccountId}:role/tp-BackendDeployer-${AWS::AccountId}"
               - !Sub "arn:aws:iam::${AWS::AccountId}:role/tp-FrontendPublisher-${AWS::AccountId}"
               - !Sub "arn:aws:iam::${AWS::AccountId}:role/tp-Observer-${AWS::AccountId}"
               - !Sub "arn:aws:iam::${AWS::AccountId}:role/tp-SecretsAdmin-${AWS::AccountId}"
+      Groups:
+        - !Ref MembersGroup
+
+  # Policy for basic AWS console access (MFA optional)
+  BasicConsoleAccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "TP-BasicConsoleAccess-${AWS::AccountId}"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - iam:GetUser
+              - iam:ListMFADevices
+              - iam:ListVirtualMFADevices
+              - iam:EnableMFADevice
+              - iam:ResyncMFADevice
+              - iam:DeactivateMFADevice
+              - iam:DeleteVirtualMFADevice
+              - iam:CreateVirtualMFADevice
+              - iam:ChangePassword
+              - iam:GetLoginProfile
+              - iam:UpdateLoginProfile
+            Resource: "*"
+      Groups:
+        - !Ref MembersGroup
+
+  # Policy for AWS console access (no MFA required)
+  ConsoleAccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "TP-ConsoleAccess-${AWS::AccountId}"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - iam:ListAccountAliases
+              - iam:GetAccountSummary
+              - iam:ListUsers
+              - iam:ListGroups
+              - iam:ListRoles
+              - iam:ListPolicies
+            Resource: "*"
+      Groups:
+        - !Ref MembersGroup
+
+  # Policy for viewing AWS services (read-only access)
+  ReadOnlyAccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "TP-ReadOnlyAccess-${AWS::AccountId}"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              # EC2 read-only
+              - ec2:Describe*
+              - ec2:Get*
+              - ec2:List*
+              # S3 read-only
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:GetBucketLocation
+              - s3:GetBucketVersioning
+              # DynamoDB read-only
+              - dynamodb:DescribeTable
+              - dynamodb:ListTables
+              - dynamodb:Scan
+              - dynamodb:Query
+              - dynamodb:GetItem
+              # CloudFormation read-only
+              - cloudformation:Describe*
+              - cloudformation:List*
+              - cloudformation:Get*
+              # CloudWatch read-only
+              - cloudwatch:Describe*
+              - cloudwatch:Get*
+              - cloudwatch:List*
+              # SNS read-only
+              - sns:GetTopicAttributes
+              - sns:ListTopics
+              - sns:ListSubscriptions
+              # Secrets Manager read-only
+              - secretsmanager:DescribeSecret
+              - secretsmanager:ListSecrets
+              # Load Balancer read-only
+              - elasticloadbalancing:Describe*
+              # CloudFront read-only
+              - cloudfront:GetDistribution
+              - cloudfront:ListDistributions
+            Resource: "*"
       Groups:
         - !Ref MembersGroup
 
