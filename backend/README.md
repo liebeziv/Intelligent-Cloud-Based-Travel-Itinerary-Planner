@@ -105,3 +105,4 @@ curl -X POST http://localhost:8000/api/itineraries \
 - Use Application Load Balancer (ALB) with target group health check on /health
 - Use IAM roles for EC2 to grant access to S3, SNS, Secrets Manager
 - Logs will be visible in CloudWatch
+

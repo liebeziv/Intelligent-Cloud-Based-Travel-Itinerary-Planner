@@ -12,3 +12,4 @@ def publish(message, subject="Notification"):
         Message=message,
         Subject=subject
     )
+
