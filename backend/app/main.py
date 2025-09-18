@@ -1,6 +1,7 @@
-﻿import app
+﻿
 import uuid
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 from . import db, auth, s3utils, sns_utils, models
@@ -14,6 +15,16 @@ app = FastAPI(
     description="AI-powered travel itinerary planner focused on New Zealand tourism",
     version="1.0.0"
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+
 
 # Recommended System Route
 app.include_router(recommendation_router)
@@ -82,3 +93,5 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "travel-planner-api"}
+
+
