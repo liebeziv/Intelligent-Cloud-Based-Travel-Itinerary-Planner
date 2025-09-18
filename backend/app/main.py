@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from . import db, auth, s3utils, sns_utils, models
 
 app = FastAPI(title="Intelligent Travel Planner Backend")
-
 # Startup
 @app.on_event("startup")
 def startup_event():
