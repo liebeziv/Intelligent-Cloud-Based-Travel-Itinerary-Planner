@@ -1,12 +1,23 @@
-﻿import uuid
+﻿import app
+import uuid
 import datetime
 from fastapi import FastAPI, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from starlette.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from . import db, auth, s3utils, sns_utils, models
 
-app = FastAPI(title="Intelligent Travel Planner Backend")
+# Importing recommender system routes
+from .api.routes.recommendations import router as recommendation_router
+# FastAPI Instance
+app = FastAPI(
+    title="Intelligent cloud-based travel itinerary planner",
+    description="AI-powered travel itinerary planner focused on New Zealand tourism",
+    version="1.0.0"
+)
+
+# Recommended System Route
+app.include_router(recommendation_router)
 
 # Startup
 @app.on_event("startup")
@@ -74,7 +85,16 @@ def upload_url(filename: str, current_user=Depends(auth.get_current_user)):
     url = s3utils.get_presigned_put_url(key)
     return {"url": url, "key": key}
 
-# Health Check
+@app.get("/")
+def read_root():
+    return {
+        "message": "Intelligent cloud-based travel itinerary planner API",
+        "version": "1.0.0",
+        "features": ["User Authentication", "Itinerary Management", "AI Recommendation System", "File Upload"],
+        "docs": "/docs"
+    }
+
+#Health Check
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "healthy", "service": "travel-planner-api"}
