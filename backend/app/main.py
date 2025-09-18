@@ -1,14 +1,14 @@
-﻿
+﻿import app
 import uuid
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+import datetime
+from fastapi import FastAPI, Depends, HTTPException
 from starlette.responses import JSONResponse
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from . import db, auth, s3utils, sns_utils, models
 
 # Importing recommender system routes
 from .api.routes.recommendations import router as recommendation_router
-
 # FastAPI Instance
 app = FastAPI(
     title="Intelligent cloud-based travel itinerary planner",
@@ -16,62 +16,66 @@ app = FastAPI(
     version="1.0.0"
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
-
-
-
 # Recommended System Route
 app.include_router(recommendation_router)
 
-
+# Startup
 @app.on_event("startup")
-async def startup_event():
-    # Database initialization
+def startup_event():
     db.init_db()
 
-    # Initialize recommendation system
-    try:
-        from .api.routes.recommendations import recommendation_service
-        from .data.sample_attractions import SAMPLE_NZ_ATTRACTIONS
-        await recommendation_service.initialize(SAMPLE_NZ_ATTRACTIONS)
-        print("Recommendation system initialized successfully")
-    except Exception as e:
-        print(f"Recommendation system initialization failed: {e}")
+# Pydantic Models
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: str | None = None
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class ItineraryRequest(BaseModel):
+    title: str
+    items: list[str] = []
+
+# Auth Endpoints
 @app.post("/api/auth/register")
-def register(payload: dict, dbs: Session = Depends(db.SessionLocal)):
-    email = payload.get("email"); password = payload.get("password"); name = payload.get("name")
-    if not email or not password:
-        return JSONResponse({"detail":"email+password required"}, status_code=400)
-    if dbs.query(models.User).filter_by(email=email).first():
-        return JSONResponse({"detail":"email exists"}, status_code=400)
-    user = auth.create_user(dbs, email, password, name)
-    return {"id": user.id, "email": user.email}
+def register(payload: RegisterRequest, dbs: Session = Depends(db.get_db)):
+    existing_user = dbs.query(models.User).filter(models.User.email == payload.email).first()
+    if existing_user:
+        return JSONResponse({"detail": "email exists"}, status_code=400)
+
+    user = auth.create_user(dbs, payload.email, payload.password, payload.name)
+    return {"id": user.id, "email": user.email, "name": user.name}
 
 @app.post("/api/auth/login")
-def login(payload: dict, dbs: Session = Depends(db.SessionLocal)):
-    email = payload.get("email"); password = payload.get("password")
-    user = auth.authenticate_user(dbs, email, password)
+def login(payload: LoginRequest, dbs: Session = Depends(db.get_db)):
+    user = auth.authenticate_user(dbs, payload.email, payload.password)
     if not user:
-        return JSONResponse({"detail":"invalid credentials"}, status_code=401)
+        return JSONResponse({"detail": "invalid credentials"}, status_code=401)
+
     token = auth.create_access_token({"sub": user.id, "email": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
+# Itinerary Endpoints
 @app.post("/api/itineraries")
-def create_itinerary(payload: dict, current_user=Depends(auth.get_current_user), dbs: Session = Depends(db.SessionLocal)):
-    import datetime
+def create_itinerary(payload: ItineraryRequest, current_user=Depends(auth.get_current_user), dbs: Session = Depends(db.get_db)):
     it_id = str(uuid.uuid4())
     key = f"itineraries/{current_user.id}/{it_id}.json"
-    obj = {"id": it_id, "owner": current_user.id, "title": payload.get("title"), "items": payload.get("items", []), "createdAt": datetime.datetime.utcnow().isoformat()}
+    obj = {
+        "id": it_id,
+        "owner": current_user.id,
+        "title": payload.title,
+        "items": payload.items,
+        "createdAt": datetime.datetime.utcnow().isoformat()
+    }
+    # Upload to S3
     s3utils.put_json_object(key, obj)
-    it = models.Itinerary(id=it_id, owner_id=current_user.id, title=payload.get("title"), s3_key=key)
-    dbs.add(it); dbs.commit()
+    # Save metadata to DB
+    it = models.Itinerary(id=it_id, owner_id=current_user.id, title=payload.title, s3_key=key)
+    dbs.add(it)
+    dbs.commit()
+    # Send SNS notification
     sns_utils.publish(f"New itinerary {it_id} by {current_user.email}", subject="Itinerary Created")
     return {"id": it_id, "s3_key": key}
 
@@ -90,8 +94,7 @@ def read_root():
         "docs": "/docs"
     }
 
+#Health Check
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "travel-planner-api"}
-
-

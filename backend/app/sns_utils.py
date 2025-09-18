@@ -4,6 +4,12 @@ SNS_ARN = os.getenv("SNS_TOPIC_ARN")
 sns = boto3.client("sns", region_name=os.getenv("AWS_REGION"))
 
 def publish(message, subject="Notification"):
-    if not SNS_ARN:
+    if SNS_ARN:
+        print(f"[MOCK SNS] {subject}: {message}")
         return
-    sns.publish(TopicArn=SNS_ARN, Message=message, Subject=subject)
+    sns.publish(
+        TopicArn=SNS_ARN,
+        Message=message,
+        Subject=subject
+    )
+

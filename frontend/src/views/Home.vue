@@ -35,7 +35,7 @@ export default {
           description: "Famous fiord in Fiordland National Park",
           category: "nature",
           rating: 4.8,
-          image: "/images/Milford Sound.jpg",
+          image: "/images/milford-sound.webp",
           sourceUrl: "https://onlyluxe.com.au/destinations/australasia/new-zealand/milford-sound.html",
           extra: "Best visited in summer months for clear views of waterfalls."
         },
@@ -45,7 +45,7 @@ export default {
           description: "Scenic gondola ride",
           category: "adventure",
           rating: 4.6,
-          image: "/images/Queenstown Skyline Gondola.png",
+          image: "/images/skyline-gondola.webp",
           sourceUrl: "https://www.newzealand.com/in/plan/business/skyline-queenstown--gondola/",
           extra: "Offers panoramic views of Lake Wakatipu and mountains."
         }
