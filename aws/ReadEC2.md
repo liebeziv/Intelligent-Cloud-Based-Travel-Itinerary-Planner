@@ -173,12 +173,3 @@ If no instances appear in the EC2 console, your ASG capacity is probably **0**. 
 ---
 
 
-arn:aws:iam::849354442724:role/tp-Observer-849354442724
-
-arn:aws:iam::849354442724:role/tp-BackendDeployer-849354442724
-
-arn:aws:iam::849354442724:role/tp-FrontendPublisher-849354442724
-
-arn:aws:iam::849354442724:role/tp-ProjectAdmin-849354442724
-
-arn:aws:iam::849354442724:role/tp-SecretsAdmin-849354442724
