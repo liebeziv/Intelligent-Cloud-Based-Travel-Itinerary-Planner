@@ -241,7 +241,62 @@ aws secretsmanager put-secret-value \
 
 ---
 
-## 5) Safety, scope & hygiene
+## 5) EC2 Instance Role & PassRole Usage
+
+### What is EC2 Instance Role?
+
+EC2 instances automatically get AWS permissions through **instance roles** - no hardcoded access keys needed! The `BackendDeployer` role can "pass" IAM roles to EC2 instances during deployment.
+
+### How PassRole Works
+
+1. **BackendDeployer** has `iam:PassRole` permission for the backend EC2 role
+2. When deploying/updating the backend stack, CloudFormation automatically:
+   - Creates/updates EC2 instances
+   - Attaches the `trip-planner-backend-role-849354442724` role to instances
+   - Instances get permissions to access DynamoDB, S3, Secrets Manager, etc.
+
+### Backend Application Usage
+
+Your FastAPI backend code can directly use AWS services without any configuration:
+
+```python
+# No AWS credentials needed - uses instance role automatically
+import boto3
+
+# DynamoDB access
+dynamodb = boto3.resource('dynamodb')
+users_table = dynamodb.Table('Users')
+
+# S3 access  
+s3_client = boto3.client('s3')
+
+# Secrets Manager access
+secrets_client = boto3.client('secretsmanager')
+```
+
+### Verify Instance Role
+
+```bash
+# Check if instance has the role (run on EC2)
+curl http://169.254.169.254/latest/meta-data/iam/security-credentials/
+# Should return: trip-planner-backend-role-849354442724
+
+# Check current AWS identity
+aws sts get-caller-identity
+# Should show the EC2 instance role, not your user role
+```
+
+### Why PassRole Permission?
+
+The `BackendDeployer` needs `iam:PassRole` to:
+- Deploy new backend versions
+- Scale up/down instances  
+- Update instance configurations
+- Ensure all instances get the correct permissions
+
+---
+
+## 6) Safety, scope & hygiene
 
 * **Use the smallest role** Observer > FrontendPublisher/BackendDeployer > SecretsAdmin.
 * **MFA on your IAM user** is required.
@@ -251,7 +306,7 @@ aws secretsmanager put-secret-value \
 
 ---
 
-## 6) Troubleshooting
+## 7) Troubleshooting
 
 * **AccessDenied**: You assumed the wrong role for this action, or the resource (bucket/distribution/stack) isn’t the expected one. Switch role or ask the admin.
 * **ExpiredToken**: Your temporary session expired. Re-assume the role.
