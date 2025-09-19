@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: DynamoDB tables for Trip Planner
+
+Resources:
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "trip-planner-users-849354442724"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: email-index
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  ItinerariesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "trip-planner-itineraries-849354442724"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: owner_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: owner-index
+          KeySchema:
+            - AttributeName: owner_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+Outputs:
+  UsersTableName:
+    Value: !Ref UsersTable
+  ItinerariesTableName:
+    Value: !Ref ItinerariesTable

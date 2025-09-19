@@ -59,16 +59,16 @@ class ItineraryRequest(BaseModel):
 async def startup_event():
     print("🚀 Starting Travel Planner API...")
     
-
     db.init_db()
     
-    # try:
-    #     from .api.routes.recommendations import recommendation_service
-    #     from .data.sample_attractions import SAMPLE_NZ_ATTRACTIONS
-    #     await recommendation_service.initialize(SAMPLE_NZ_ATTRACTIONS)
-    #     print("✅ Recommendation system initialized")
-    # except Exception as e:
-    #     print(f"⚠️ Recommendation system failed: {e}")
+    try:
+        from app.api.routes.recommendations import recommendation_service
+        from app.data.sample_attractions import SAMPLE_NZ_ATTRACTIONS
+        await recommendation_service.initialize(SAMPLE_NZ_ATTRACTIONS)
+        print("✅ Recommendation system initialized")
+    except Exception as e:
+        print(f"⚠️ Recommendation system failed: {e}")
+    
     print("✅ API startup completed")
 # Auth Endpoints
 @app.post("/api/auth/register")
@@ -110,6 +110,35 @@ def create_itinerary(payload: ItineraryRequest, current_user=Depends(auth.get_cu
     # Send SNS notification
     sns_utils.publish(f"New itinerary {it_id} by {current_user.email}", subject="Itinerary Created")
     return {"id": it_id, "s3_key": key}
+
+@app.get("/api/itineraries")
+def get_itineraries(current_user=Depends(auth.get_current_user), dbs: Session = Depends(db.get_db)):
+    # Get all itineraries for the current user from DB
+    itineraries = dbs.query(models.Itinerary).filter(models.Itinerary.owner_id == current_user.id).all()
+    
+    result = []
+    for it in itineraries:
+        try:
+            # Get the full itinerary data from S3
+            data = s3utils.get_json_object(it.s3_key)
+            if data:
+                result.append({
+                    "id": it.id,
+                    "title": it.title,
+                    "items": data.get("items", []),
+                    "createdAt": data.get("createdAt")
+                })
+        except Exception as e:
+            print(f"Error loading itinerary {it.id}: {e}")
+            # Include basic info even if S3 fetch fails
+            result.append({
+                "id": it.id,
+                "title": it.title,
+                "items": [],
+                "createdAt": None
+            })
+    
+    return result
 
 @app.get("/api/upload-url")
 def upload_url(filename: str, current_user=Depends(auth.get_current_user)):
