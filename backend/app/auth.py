@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from . import db, models
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "local-dev-secret-key-not-for-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
@@ -60,19 +60,27 @@ def get_current_user(request: Request, dbs: Session = Depends(db.get_db)):
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    authorization = request.headers.get("authorization")
-    if not authorization or not authorization.startswith("Bearer "):
+    try:
+        authorization = request.headers.get("authorization")
+        if not authorization or not authorization.startswith("Bearer "):
+            raise credentials_exception
+
+        token = authorization.split(" ", 1)[1]
+
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+
+        user = dbs.query(models.User).filter(models.User.id == user_id).first()
+        if user is None:
+            raise credentials_exception
+
+        return user
+    
+    except JWTError:
         raise credentials_exception
-
-    token = authorization.split(" ", 1)[1]
-
-    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    user_id: str = payload.get("sub")
-    if user_id is None:
+    except Exception as e:
+        import logging
+        logging.error(f"Authentication error: {str(e)}")
         raise credentials_exception
-
-    user = dbs.query(models.User).filter(models.User.id == user_id).first()
-    if user is None:
-        raise credentials_exception
-
-    return user

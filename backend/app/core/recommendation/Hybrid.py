@@ -81,7 +81,7 @@ class HybridRecommender(BaseRecommender):
         return sorted_recommendations
     
     async def _calculate_location_scores(self, user_location: Optional[Dict], preferences: Dict) -> Dict[str, float]:
-        """计算基于位置的得分"""
+       
         scores = {}
         
         if not user_location:

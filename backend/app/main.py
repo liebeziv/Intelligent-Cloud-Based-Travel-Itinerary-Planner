@@ -1,4 +1,4 @@
-﻿import app
+﻿import os
 import uuid
 import datetime
 from fastapi import FastAPI, Depends, HTTPException
@@ -6,6 +6,16 @@ from starlette.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from . import db, auth, s3utils, sns_utils, models
+from fastapi.middleware.cors import CORSMiddleware
+
+IS_LOCAL_DEV = os.getenv("DEBUG", "False").lower() == "true"
+
+if IS_LOCAL_DEV:
+    from .local_utils import local_s3 as s3utils, local_sns as sns_utils
+    print("🏠 Running in LOCAL DEVELOPMENT mode")
+else:
+    from . import s3utils, sns_utils
+    print("☁️ Running in PRODUCTION mode")
 
 # Importing recommender system routes
 from .api.routes.recommendations import router as recommendation_router
@@ -16,19 +26,25 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+
+
 # Recommended System Route
 app.include_router(recommendation_router)
 
 # Startup
-@app.on_event("startup")
-def startup_event():
-    db.init_db()
 
-# Pydantic Models
 class RegisterRequest(BaseModel):
     email: str
     password: str
-    name: str | None = None
+    name: str = None  
 
 class LoginRequest(BaseModel):
     email: str
@@ -36,8 +52,24 @@ class LoginRequest(BaseModel):
 
 class ItineraryRequest(BaseModel):
     title: str
-    items: list[str] = []
+    items: list = []  
 
+
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 Starting Travel Planner API...")
+    
+
+    db.init_db()
+    
+    # try:
+    #     from .api.routes.recommendations import recommendation_service
+    #     from .data.sample_attractions import SAMPLE_NZ_ATTRACTIONS
+    #     await recommendation_service.initialize(SAMPLE_NZ_ATTRACTIONS)
+    #     print("✅ Recommendation system initialized")
+    # except Exception as e:
+    #     print(f"⚠️ Recommendation system failed: {e}")
+    print("✅ API startup completed")
 # Auth Endpoints
 @app.post("/api/auth/register")
 def register(payload: RegisterRequest, dbs: Session = Depends(db.get_db)):
@@ -98,3 +130,5 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "travel-planner-api"}
+
+
