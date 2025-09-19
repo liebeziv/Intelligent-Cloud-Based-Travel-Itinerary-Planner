@@ -46,7 +46,7 @@ Resources:
   BackendRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "trip-planner-backend-role-${AWS::AccountId}"
+      RoleName: !Sub "trip-planner-backend-role-v5-${AWS::AccountId}"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -88,7 +88,7 @@ Resources:
     Properties:
       Roles: [ !Ref BackendRole ]
       Path: /
-      InstanceProfileName: !Sub "trip-planner-backend-instance-profile-${AWS::AccountId}"
+      InstanceProfileName: !Sub "trip-planner-backend-instance-profile-v5-${AWS::AccountId}"
 
   # ---------- SG ----------
   AlbSecurityGroup:
@@ -149,14 +149,14 @@ Resources:
   LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /trip-planner/backend
+      LogGroupName: /trip-planner/backend-v5
       RetentionInDays: 14
 
   # ---------- Launch Template / ASG ----------
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Sub "trip-planner-backend-lt-${AWS::AccountId}"
+      LaunchTemplateName: !Sub "trip-planner-backend-lt-v5-${AWS::AccountId}"
       LaunchTemplateData:
         IamInstanceProfile: { Name: !Ref BackendInstanceProfile }
         ImageId: !Ref AmiIdParam
@@ -184,7 +184,7 @@ Resources:
             docker rm -f app || true
             docker run -d --name app -p ${AppPort}:${AppPort} \
               --log-driver awslogs \
-              --log-opt awslogs-group=/trip-planner/backend \
+              --log-opt awslogs-group=/trip-planner/backend-v3 \
               --log-opt awslogs-region=$REGION \
               --log-opt awslogs-stream=app \
               -e AWS_REGION=$REGION \

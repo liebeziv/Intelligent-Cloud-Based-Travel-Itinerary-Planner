@@ -7,7 +7,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Sub "travel-planner-assets-${AWS::AccountId}"
+      BucketName: !Sub "travel-planner-assets-${AWS::AccountId}-lz"
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption:
@@ -41,7 +41,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Sub "travel-planner-frontend-${AWS::AccountId}"
+      BucketName: !Sub "travel-planner-frontend-${AWS::AccountId}-lz"
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption:
@@ -86,44 +86,44 @@ Resources:
               StringNotEquals:
                 s3:x-amz-server-side-encryption: AES256
 
-  FrontendBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref FrontendBucket
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: DenyInsecureTransport
-            Effect: Deny
-            Principal: "*"
-            Action: "s3:*"
-            Resource:
-              - !GetAtt FrontendBucket.Arn
-              - !Sub "${FrontendBucket.Arn}/*"
-            Condition:
-              Bool: { aws:SecureTransport: "false" }
-          - Sid: DenyUnEncryptedObjectUploads
-            Effect: Deny
-            Principal: "*"
-            Action: "s3:PutObject"
-            Resource: !Sub "${FrontendBucket.Arn}/*"
-            Condition:
-              StringNotEquals:
-                s3:x-amz-server-side-encryption: AES256
-          - Sid: AllowCloudFrontServiceGetObject
-            Effect: Allow
-            Principal:
-              Service: cloudfront.amazonaws.com
-            Action: s3:GetObject
-            Resource: !Sub "${FrontendBucket.Arn}/*"
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Join
-                  - ""
-                  - - "arn:aws:cloudfront::"
-                    - !Ref AWS::AccountId
-                    - ":distribution/"
-                    - !ImportValue trip-planner-frontend-cf-DistributionId
+  # FrontendBucketPolicy:
+  #   Type: AWS::S3::BucketPolicy
+  #   Properties:
+  #     Bucket: !Ref FrontendBucket
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Sid: DenyInsecureTransport
+  #           Effect: Deny
+  #           Principal: "*"
+  #           Action: "s3:*"
+  #           Resource:
+  #             - !GetAtt FrontendBucket.Arn
+  #             - !Sub "${FrontendBucket.Arn}/*"
+  #           Condition:
+  #             Bool: { aws:SecureTransport: "false" }
+  #         - Sid: DenyUnEncryptedObjectUploads
+  #           Effect: Deny
+  #           Principal: "*"
+  #           Action: "s3:PutObject"
+  #           Resource: !Sub "${FrontendBucket.Arn}/*"
+  #           Condition:
+  #             StringNotEquals:
+  #               s3:x-amz-server-side-encryption: AES256
+  #         - Sid: AllowCloudFrontServiceGetObject
+  #           Effect: Allow
+  #           Principal:
+  #             Service: cloudfront.amazonaws.com
+  #           Action: s3:GetObject
+  #           Resource: !Sub "${FrontendBucket.Arn}/*"
+  #           Condition:
+  #             StringEquals:
+  #               AWS:SourceArn: !Join
+  #                 - ""
+  #                 - - "arn:aws:cloudfront::"
+  #                   - !Ref AWS::AccountId
+  #                   - ":distribution/"
+  #                   - !ImportValue trip-planner-frontend-cf-DistributionId
 
 Outputs:
   AssetsBucketName:

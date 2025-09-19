@@ -21,7 +21,7 @@ Resources:
     Properties:
       DistributionConfig:
         Enabled: true
-        Comment: Trip Planner Frontend (OAC → S3 private)
+        Comment: Trip Planner Frontend (OAC to S3 private)
         DefaultRootObject: index.html
         IPV6Enabled: true
         Origins:
@@ -55,3 +55,4 @@ Outputs:
     Value: !GetAtt FrontendDistribution.DomainName
     Export:
       Name: trip-planner-frontend-cf-DomainName
+
