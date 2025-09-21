@@ -26,14 +26,12 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 class Config:
-    AWS_REGION = "us-east-2"
+    AWS_REGION = "us-east-1"  # Fixed region to match your deployment
     AWS_ACCOUNT_ID = "849354442724"
-    DYNAMODB_USERS_TABLE = "trip-planner-users-849354442724"
-    DYNAMODB_ITINERARIES_TABLE = "trip-planner-itineraries-849354442724"
+    DYNAMODB_USERS_TABLE = "Users"  # Simplified table names as per your CloudFormation
+    DYNAMODB_ITINERARIES_TABLE = "Itineraries"
     SNS_TOPIC_ARN = f"arn:aws:sns:{AWS_REGION}:{AWS_ACCOUNT_ID}:trip-planner-notifications"
     SECRET_KEY = os.getenv("SECRET_KEY", "your-development-key")
 
 config = Config()
-
 settings = Settings()
-

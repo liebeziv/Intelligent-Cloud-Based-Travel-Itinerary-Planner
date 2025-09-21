@@ -41,6 +41,7 @@ Parameters:
     Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
     Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 
+
 Resources:
   # ---------- IAM ----------
   BackendRole:
@@ -54,11 +55,21 @@ Resources:
             Principal: { Service: ec2.amazonaws.com }
             Action: sts:AssumeRole
       Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
       Policies:
         - PolicyName: trip-planner-backend-inline
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              # ECR permissions
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: "*"
               # DynamoDB minimal access
               - Effect: Allow
                 Action:
@@ -74,7 +85,7 @@ Resources:
               - Effect: Allow
                 Action: ["s3:PutObject","s3:GetObject"]
                 Resource: !Sub "arn:aws:s3:::travel-planner-assets-${AWS::AccountId}/user-uploads/*"
-              # Secrets Manager read (narrow later gainning ARN)
+              # Secrets Manager read
               - Effect: Allow
                 Action: ["secretsmanager:GetSecretValue"]
                 Resource: "*"
@@ -180,11 +191,14 @@ Resources:
             DDB_ITINS="${DdbItinsTable}"
             IMAGE="${ContainerImage}"
 
+            # ECR Login
+            aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.$REGION.amazonaws.com
+
             docker pull "$IMAGE" || true
             docker rm -f app || true
             docker run -d --name app -p ${AppPort}:${AppPort} \
               --log-driver awslogs \
-              --log-opt awslogs-group=/trip-planner/backend-v3 \
+              --log-opt awslogs-group=/trip-planner/backend-v5 \
               --log-opt awslogs-region=$REGION \
               --log-opt awslogs-stream=app \
               -e AWS_REGION=$REGION \
