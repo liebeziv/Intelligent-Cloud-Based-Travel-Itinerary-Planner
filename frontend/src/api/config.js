@@ -1,5 +1,5 @@
 ﻿// frontend/src/api/config.js
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://travelplannerbackend-env.eba-p7nfszip.us-east-1.elasticbeanstalk.com';
 
 export const apiConfig = {
   baseURL: API_BASE_URL,
@@ -13,7 +13,7 @@ export const apiConfig = {
   }
 };
 
-// API调用封装
+
 export async function apiCall(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   const config = {

@@ -2,7 +2,7 @@ import requests
 import json
 
 def test_recommendation_request():
-    url = "http://localhost:8000/api/recommendations/"
+    url = "https://d35vyyonooyid7.cloudfront.net/api/recommendations/"
     
     
     payload = {

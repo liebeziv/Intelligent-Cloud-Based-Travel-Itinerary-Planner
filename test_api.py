@@ -8,7 +8,7 @@ from datetime import datetime
 import uuid
 
 class TravelPlannerTester:
-    def __init__(self, base_url="http://localhost:8000"):
+    def __init__(self, base_url="https://d35vyyonooyid7.cloudfront.net"):
         self.base_url = base_url
         self.token = None
         self.test_user_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
@@ -390,7 +390,7 @@ if __name__ == "__main__":
     import sys
 
     # Check server address argument
-    base_url = "http://localhost:8000"
+    base_url = "https://d35vyyonooyid7.cloudfront.net"
     if len(sys.argv) > 1:
         base_url = sys.argv[1]
 

@@ -9,7 +9,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'TravelPlannerBackend-env.eba-p7nf5zp.us-east-1.elasticbeanstalk.com',
         changeOrigin: true
       }
     }

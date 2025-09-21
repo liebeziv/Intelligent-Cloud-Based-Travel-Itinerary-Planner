@@ -1,79 +1,98 @@
-import os, uuid
+import jwt
+import bcrypt
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
-from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, Request
-from .aws_services import aws_services
-from .models import User
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Optional
+import uuid
 
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = os.getenv("SECRET_KEY", "local-dev-secret-key-not-for-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+try:
+    from .config import settings
+    from .aws_services import aws_services
+except ImportError as e:
+    print(f"Import error in auth.py: {e}")
+    import os
+    class DefaultSettings:
+        SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-key")
+        ALGORITHM = "HS256"
+        ACCESS_TOKEN_EXPIRE_MINUTES = 30
+        DYNAMODB_USERS_TABLE = "Users"
+    settings = DefaultSettings()
+    aws_services = None
 
-def create_user(email: str, password: str, name: str = None):
+security = HTTPBearer()
+
+def create_user(email: str, password: str, name: Optional[str] = None):
+    """创建新用户"""
     user_id = str(uuid.uuid4())
-    password_hash = pwd_ctx.hash(password)
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
     user_data = {
-        'id': user_id,
-        'email': email,
-        'password_hash': password_hash,
-        'name': name,
-        'created_at': datetime.utcnow().isoformat()
+        "id": user_id,
+        "email": email,
+        "password": hashed_password,
+        "name": name or email.split('@')[0],
+        "created_at": datetime.utcnow().isoformat()
     }
     
-    aws_services.create_user(user_data)
+    if aws_services and aws_services.dynamodb:
+        try:
+            table = aws_services.dynamodb.Table(settings.DYNAMODB_USERS_TABLE)
+            table.put_item(Item=user_data)
+            print(f"User {email} created in DynamoDB")
+        except Exception as e:
+            print(f"DynamoDB user creation error: {e}")
+            # 不阻止用户创建，只是无法持久化
+    else:
+        print("DynamoDB not available, user created in memory only")
+    
     return user_data
 
 def authenticate_user(email: str, password: str):
-    user_data = aws_services.get_user_by_email(email)
-    if not user_data:
-        return None
-    
-    if not pwd_ctx.verify(password, user_data['password_hash']):
-        return None
-    
-    return user_data
-
-def create_access_token(data: dict, expires_delta: timedelta = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+    """验证用户"""
+    if aws_services and aws_services.dynamodb:
+        try:
+            table = aws_services.dynamodb.Table(settings.DYNAMODB_USERS_TABLE)
+            response = table.scan(
+                FilterExpression='email = :email',
+                ExpressionAttributeValues={':email': email}
+            )
+            
+            if response['Items']:
+                user = response['Items'][0]
+                if bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+                    return user
+        except Exception as e:
+            print(f"Authentication error: {e}")
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        print("DynamoDB not available for authentication")
     
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return None
 
-def get_current_user(request: Request):
-    credentials_exception = HTTPException(
-        status_code=401,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+def create_access_token(data: dict):
+    """创建访问令牌"""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
     
     try:
-        authorization = request.headers.get("authorization")
-        if not authorization or not authorization.startswith("Bearer "):
-            raise credentials_exception
-        
-        token = authorization.split(" ", 1)[1]
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-        
-        user_data = aws_services.get_user_by_id(user_id)
-        if user_data is None:
-            raise credentials_exception
-        
-        return user_data
-    
-    except JWTError:
-        raise credentials_exception
+        encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        return encoded_jwt
     except Exception as e:
-        import logging
-        logging.error(f"Authentication error: {str(e)}")
-        raise credentials_exception
+        print(f"Token creation error: {e}")
+        raise HTTPException(status_code=500, detail="Token creation failed")
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """获取当前用户"""
+    try:
+        payload = jwt.decode(credentials.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id = payload.get("sub")
+        email = payload.get("email")
+        
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        
+        return {"id": user_id, "email": email}
+    except jwt.PyJWTError as e:
+        print(f"JWT decode error: {e}")
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")

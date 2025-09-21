@@ -290,8 +290,8 @@
 <script>
 import L from 'leaflet'
 
-const API_BASE_URL = 'http://localhost:8000';
 
+const API_BASE_URL = 'http://travelplannerbackend-env.eba-p7nfszip.us-east-1.elasticbeanstalk.com';
 export default {
   name: 'Home',
   data() {
@@ -442,7 +442,7 @@ export default {
 
         console.log('Sending request:', requestBody);
         
-        const response = await fetch(`${API_BASE_URL}/api/recommendations/`, {
+        const response = await fetch(`${API_BASE_URL}/api/recommendations`, {
           signal: controller.signal,
           method: 'POST',
           headers: {

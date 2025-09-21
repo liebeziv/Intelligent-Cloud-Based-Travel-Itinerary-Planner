@@ -1,11 +1,41 @@
-﻿FROM python:3.11-slim
+﻿
+FROM python:3.9-slim
+
+
 WORKDIR /app
-RUN apt-get update && apt-get install -y gcc default-libmysqlclient-dev pkg-config && rm -rf /var/lib/apt/lists/*
+
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY app ./app
-RUN useradd -m appuser
-USER appuser
-EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
+
+COPY main.py .
+COPY application.py .
+COPY auth.py .
+COPY s3utils.py .
+COPY sns_utils.py .
+COPY Procfile .
+
+
+
+
+ENV PYTHONPATH=/app
+ENV PORT=8000
+ENV PYTHONUNBUFFERED=1
+
+
+EXPOSE 8000
+
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://127.0.0.1:8000/health || exit 1
+
+
+CMD ["uvicorn", "application:application", "--host", "0.0.0.0", "--port", "8000"]

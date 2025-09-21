@@ -57,3 +57,20 @@ test_report.json
 
 
 itineraries_*.json
+
+
+/dist
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+.env.local
+
+
+*.db
+
+
+*.zip
