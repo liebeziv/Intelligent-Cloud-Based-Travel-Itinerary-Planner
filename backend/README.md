@@ -53,7 +53,7 @@ docker build -t travel-backend .
 Run container
 
 ```
-docker run -p 8000:8000 --env-file .env travel-backend
+docker run -p 8000:8000 --env-file ../.env travel-backend
 ```
 
 Backend will be available at:
@@ -105,3 +105,4 @@ curl -X POST http://localhost:8000/api/itineraries \
 - Use Application Load Balancer (ALB) with target group health check on /health
 - Use IAM roles for EC2 to grant access to S3, SNS, Secrets Manager
 - Logs will be visible in CloudWatch
+

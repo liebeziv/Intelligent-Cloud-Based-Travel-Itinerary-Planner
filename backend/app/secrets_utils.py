@@ -8,3 +8,4 @@ def get_secret(secret_name):
         return json.loads(resp["SecretString"])
     else:
         return json.loads(resp["SecretBinary"])
+

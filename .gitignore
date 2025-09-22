@@ -42,3 +42,35 @@ logs/
 # Cache
 .cache/
 .parcel-cache/
+
+
+
+*.pyc
+
+
+*_500_error.py
+debug_*.py
+
+
+test_report.json
+*_test_report.json
+
+
+itineraries_*.json
+
+
+/dist
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+.env.local
+
+
+*.db
+
+
+*.zip
