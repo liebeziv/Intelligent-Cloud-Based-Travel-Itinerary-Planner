@@ -75,6 +75,13 @@ Resources:
       TopicArn: !Ref AlertsTopic
       Endpoint: !Ref AlertEmail
 
+  WeatherEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref WeatherTopic
+      Endpoint: !Ref NotificationEmail
+
   # CloudWatch Alarms Integration
   CloudWatchAlarmsTopic:
     Type: AWS::SNS::Topic
@@ -89,6 +96,13 @@ Resources:
           Value: monitoring
         - Key: Environment
           Value: production
+
+  CloudWatchAlarmsEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref CloudWatchAlarmsTopic
+      Endpoint: !Ref AlertEmail
 
   # IAM Policy for SNS Publishing
   SNSPublishPolicy:
@@ -110,76 +124,6 @@ Resources:
       Roles:
         - !Sub "trip-planner-backend-role-${AWS::AccountId}"
 
-  # Dead Letter Queue for failed messages
-  DeadLetterQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "trip-planner-dlq-${AWS::AccountId}"
-      MessageRetentionPeriod: 1209600  # 14 days
-      VisibilityTimeoutSeconds: 60
-      Tags:
-        - Key: Project
-          Value: trip-planner
-        - Key: Service
-          Value: dlq
-        - Key: Environment
-          Value: production
-
-  # Lambda function for processing failed messages (optional)
-  DeadLetterProcessor:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Sub "trip-planner-dlq-processor-${AWS::AccountId}"
-      Runtime: python3.9
-      Handler: index.handler
-      Role: !GetAtt DeadLetterProcessorRole.Arn
-      Code:
-        ZipFile: |
-          import json
-          import boto3
-          
-          def handler(event, context):
-              # Process failed SNS messages
-              for record in event['Records']:
-                  print(f"Processing failed message: {record['body']}")
-                  # Add your error handling logic here
-              return {'statusCode': 200}
-      Environment:
-        Variables:
-          NOTIFICATIONS_TOPIC: !Ref NotificationsTopic
-          ALERTS_TOPIC: !Ref AlertsTopic
-      Tags:
-        - Key: Project
-          Value: trip-planner
-        - Key: Service
-          Value: dlq-processor
-        - Key: Environment
-          Value: production
-
-  DeadLetterProcessorRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "trip-planner-dlq-processor-role-${AWS::AccountId}"
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: SNSPublishAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - sns:Publish
-                Resource:
-                  - !Ref NotificationsTopic
-                  - !Ref AlertsTopic
 
 Outputs:
   NotificationsTopicArn:
@@ -205,9 +149,3 @@ Outputs:
     Value: !Ref CloudWatchAlarmsTopic
     Export:
       Name: trip-planner-cloudwatch-alarms-topic-arn
-
-  DeadLetterQueueUrl:
-    Description: URL of the dead letter queue
-    Value: !Ref DeadLetterQueue
-    Export:
-      Name: trip-planner-dlq-url

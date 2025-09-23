@@ -38,15 +38,33 @@ Created 6 secrets, each with a specific purpose:
 
 
 ---
-#  SNS Notifications
-Created 4 SNS topics for different purposes:
+# SNS Notifications
+Created 4 SNS topics with email subscriptions for different purposes:
 
-| Topic Name | Purpose | Subscribers |
-|------------|---------|-------------|
-| `trip-planner-notifications-849354442724` | User notifications | Email, SMS |
-| `trip-planner-alerts-849354442724` | System alerts | Email |
-| `trip-planner-weather-849354442724` | Weather updates | Email |
-| `trip-planner-cloudwatch-alarms-849354442724` | Monitoring alerts | Email |
+| Topic Name | Purpose | Email Subscribers | Description |
+|------------|---------|-------------------|-------------|
+| `trip-planner-notifications-849354442724` | User notifications | `sc1040@students.waikato.ac.nz` | Itinerary changes, user updates |
+| `trip-planner-alerts-849354442724` | System alerts | `sc1040@students.waikato.ac.nz` | Errors, performance issues, security events |
+| `trip-planner-weather-849354442724` | Weather updates | `sc1040@students.waikato.ac.nz` | Weather alerts for travel planning |
+| `trip-planner-cloudwatch-alarms-849354442724` | Monitoring alerts | `sc1040@students.waikato.ac.nz` | CloudWatch alarms and system monitoring |
+
+## SNS Features
+- **Email Subscriptions**: All topics have email notifications enabled
+- **IAM Integration**: Backend role has publish permissions to all topics
+- **Error Handling**: Built-in retry mechanism for failed message delivery
+- **Monitoring**: CloudWatch integration for alarm notifications
+
+## Deployment
+```bash
+# Deploy SNS notifications
+aws cloudformation deploy \
+  --stack-name trip-planner-sns \
+  --template-file sns-notifications.yaml \
+  --region us-east-1 \
+  --parameter-overrides \
+    NotificationEmail="sc1040@students.waikato.ac.nz" \
+    AlertEmail="sc1040@students.waikato.ac.nz"
+```
 
 ---
 
@@ -62,6 +80,7 @@ Created 4 SNS topics for different purposes:
 - **Table Name:** `trip-planner-itineraries-849354442724`
 - **Primary Key:** `id` (HASH)
 - **GSI:** `owner-index` on `owner_id` field
+
 ---
 # CloudWatch Monitoring
 
