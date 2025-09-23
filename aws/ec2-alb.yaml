@@ -4,14 +4,16 @@ Description: EC2 + ALB for FastAPI backend (Docker). Health check; minimal IAM f
 Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
+    Default: vpc-0c5ab9424732397db
     Description: VPC to use
   PublicSubnets:
     Type: List<AWS::EC2::Subnet::Id>
+    Default: subnet-0d7cc931682f4ee82,subnet-01d01fd4ff12a7821
     Description: Two public subnets in different AZs (for ALB & ASG)
   ContainerImage:
     Type: String
-    Default: "your-image:latest"   # need to change to docker image，such as  docker.io/namespace/image:tag
-    Description: Public container image (Docker Hub/GHCR/etc)
+    Default: "849354442724.dkr.ecr.us-east-1.amazonaws.com/trip-planner-backend:latest"
+    Description: ECR container image for the backend application
   InstanceType:
     Type: String
     Default: "t3.micro"
@@ -84,7 +86,7 @@ Resources:
               # S3 uploads/reads for user-uploads prefix in Assets bucket
               - Effect: Allow
                 Action: ["s3:PutObject","s3:GetObject"]
-                Resource: !Sub "arn:aws:s3:::travel-planner-assets-${AWS::AccountId}/user-uploads/*"
+                Resource: !Sub "arn:aws:s3:::travel-planner-assets-${AWS::AccountId}-lz/user-uploads/*"
               # Secrets Manager read
               - Effect: Allow
                 Action: ["secretsmanager:GetSecretValue"]
@@ -186,7 +188,7 @@ Resources:
             systemctl enable --now docker
 
             REGION=${AWS::Region}
-            ASSETS_BUCKET="travel-planner-assets-${AWS::AccountId}"
+            ASSETS_BUCKET="travel-planner-assets-${AWS::AccountId}-lz"
             DDB_USERS="${DdbUsersTable}"
             DDB_ITINS="${DdbItinsTable}"
             IMAGE="${ContainerImage}"
@@ -225,9 +227,19 @@ Outputs:
   AlbDNSName:
     Description: Public URL for backend (HTTP)
     Value: !GetAtt ALB.DNSName
+  ALBArn:
+    Description: Application Load Balancer ARN
+    Value: !GetAtt ALB.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ALBArn"
   TargetGroupArn:
     Description: Target group ARN
     Value: !Ref TargetGroup
+  BackendASGName:
+    Description: Auto Scaling Group name
+    Value: !Ref AutoScalingGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-BackendASGName"
   InstanceRoleName:
     Description: EC2 instance role name
     Value: !Ref BackendRole
