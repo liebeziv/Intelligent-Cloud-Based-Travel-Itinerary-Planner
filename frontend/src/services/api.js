@@ -1,8 +1,10 @@
 ﻿import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://travelplannerbackend-env.eba-p7nfszip.us-east-1.elasticbeanstalk.com',
-  timeout: 10000
+  baseURL: import.meta.env.VITE_API_URL || 'http://travelplan.us-east-1.elasticbeanstalk.com',
+  headers: {
+    'Content-Type': 'application/json'
+  }
 })
 
 // Request interceptor
