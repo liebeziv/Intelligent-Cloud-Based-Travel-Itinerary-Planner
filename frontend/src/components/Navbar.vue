@@ -19,14 +19,26 @@
           <li class="nav-item">
             <router-link class="nav-link" to="/">Home</router-link>
           </li>
-          <li class="nav-item">
+          <li class="nav-item" v-if="!isLoggedIn">
             <router-link class="nav-link" to="/login">Login</router-link>
           </li>
-          <li class="nav-item">
-            <router-link class="nav-link" to="/dashboard">Dashboard</router-link>
+          <li class="nav-item" v-if="!isLoggedIn">
+            <router-link class="nav-link" to="/register">Register</router-link>
           </li>
-          <li class="nav-item">
-            <router-link class="nav-link" to="/planner">Planner</router-link>
+          <li class="nav-item dropdown" v-if="isLoggedIn">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <span class="me-2">👤</span>
+              <span class="d-none d-sm-inline">{{ userName }}</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <router-link class="dropdown-item" to="/user">My Page</router-link>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button class="dropdown-item" @click="logout">Logout</button>
+              </li>
+            </ul>
           </li>
         </ul>
       </div>
@@ -37,6 +49,24 @@
 <script>
 export default {
   name: "Navbar",
+  computed: {
+    isLoggedIn() {
+      const token = localStorage.getItem('token')
+      return !!token
+    },
+    userName() {
+      return localStorage.getItem('userName') || 'User'
+    }
+  },
+  methods: {
+    logout() {
+      localStorage.removeItem('token')
+      // keep name/email if you want? We clear for simplicity
+      // localStorage.removeItem('userName')
+      // localStorage.removeItem('userEmail')
+      this.$router.push('/')
+    }
+  }
 };
 </script>
 
