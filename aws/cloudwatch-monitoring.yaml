@@ -1,34 +1,14 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudWatch Monitoring and Alarms for Trip Planner - Performance monitoring, logging, and alerting.
+Description: CloudWatch monitoring and alarms for the Intelligent Travel Planner workload.
 
 Parameters:
-  NotificationEmail:
+  AlarmEmail:
     Type: String
     Default: "sc1040@students.waikato.ac.nz"
-    Description: Email address for receiving CloudWatch alarms
-    AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
-  
-  AlertEmail:
-    Type: String
-    Default: "sc1040@students.waikato.ac.nz"
-    Description: Email address for receiving critical alerts
+    Description: Email address subscribed to CloudWatch alarms
     AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
 
 Resources:
-  # CloudWatch Log Groups
-  BackendLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/ec2/trip-planner-backend-${AWS::AccountId}"
-      RetentionInDays: 30
-      Tags:
-        - Key: Project
-          Value: trip-planner
-        - Key: Service
-          Value: backend
-        - Key: Environment
-          Value: production
-
   FrontendLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -37,104 +17,124 @@ Resources:
       Tags:
         - Key: Project
           Value: trip-planner
+        - Key: Service
           Value: frontend
         - Key: Environment
           Value: production
 
-  # CloudWatch Dashboard
   TripPlannerDashboard:
     Type: AWS::CloudWatch::Dashboard
     Properties:
       DashboardName: !Sub "trip-planner-dashboard-${AWS::AccountId}"
-      DashboardBody: !Sub |
-        {
-          "widgets": [
+      DashboardBody:
+        Fn::Sub:
+          - |
             {
-              "type": "metric",
-              "x": 0,
-              "y": 0,
-              "width": 12,
-              "height": 6,
-              "properties": {
-                "metrics": [
-                  [ "AWS/EC2", "CPUUtilization", "InstanceId", "${BackendInstanceId}" ],
-                  [ ".", "NetworkIn", ".", "." ],
-                  [ ".", "NetworkOut", ".", "." ]
-                ],
-                "view": "timeSeries",
-                "stacked": false,
-                "region": "us-east-1",
-                "title": "Backend Server Performance",
-                "period": 300
-              }
-            },
-            {
-              "type": "metric",
-              "x": 12,
-              "y": 0,
-              "width": 12,
-              "height": 6,
-              "properties": {
-                "metrics": [
-                  [ "AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${ALBArn}" ],
-                  [ ".", "TargetResponseTime", ".", "." ],
-                  [ ".", "HTTPCode_Target_2XX_Count", ".", "." ],
-                  [ ".", "HTTPCode_Target_4XX_Count", ".", "." ],
-                  [ ".", "HTTPCode_Target_5XX_Count", ".", "." ]
-                ],
-                "view": "timeSeries",
-                "stacked": false,
-                "region": "us-east-1",
-                "title": "Load Balancer Metrics",
-                "period": 300
-              }
-            },
-            {
-              "type": "metric",
-              "x": 0,
-              "y": 6,
-              "width": 12,
-              "height": 6,
-              "properties": {
-                "metrics": [
-                  [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "trip-planner-attractions" ],
-                  [ ".", "ConsumedWriteCapacityUnits", ".", "." ],
-                  [ ".", "ThrottledRequests", ".", "." ]
-                ],
-                "view": "timeSeries",
-                "stacked": false,
-                "region": "us-east-1",
-                "title": "DynamoDB Performance",
-                "period": 300
-              }
-            },
-            {
-              "type": "metric",
-              "x": 12,
-              "y": 6,
-              "width": 12,
-              "height": 6,
-              "properties": {
-                "metrics": [
-                  [ "AWS/S3", "BucketSizeBytes", "BucketName", "trip-planner-uploads-${AWS::AccountId}", "StorageType", "StandardStorage" ],
-                  [ ".", "NumberOfObjects", ".", ".", ".", "." ]
-                ],
-                "view": "timeSeries",
-                "stacked": false,
-                "region": "us-east-1",
-                "title": "S3 Storage Usage",
-                "period": 86400
-              }
+              "widgets": [
+                {
+                  "type": "metric",
+                  "x": 0,
+                  "y": 0,
+                  "width": 12,
+                  "height": 6,
+                  "properties": {
+                    "metrics": [
+                      [ "AWS/EC2", "CPUUtilization", "AutoScalingGroupName", "${AutoScalingGroupName}" ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "${AWS::Region}",
+                    "title": "Backend CPU Utilization",
+                    "period": 300
+                  }
+                },
+                {
+                  "type": "metric",
+                  "x": 12,
+                  "y": 0,
+                  "width": 12,
+                  "height": 6,
+                  "properties": {
+                    "metrics": [
+                      [ "AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${AlbFullName}" ],
+                      [ ".", "TargetResponseTime", ".", "." ],
+                      [ ".", "HTTPCode_Target_5XX_Count", ".", "." ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "${AWS::Region}",
+                    "title": "Load Balancer Health",
+                    "period": 300
+                  }
+                },
+                {
+                  "type": "metric",
+                  "x": 0,
+                  "y": 6,
+                  "width": 12,
+                  "height": 6,
+                  "properties": {
+                    "metrics": [
+                      [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${UsersTableName}" ],
+                      [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${ItinerariesTableName}" ],
+                      [ ".", "ThrottledRequests", ".", "." ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "${AWS::Region}",
+                    "title": "DynamoDB Usage",
+                    "period": 300
+                  }
+                },
+                {
+                  "type": "metric",
+                  "x": 12,
+                  "y": 6,
+                  "width": 12,
+                  "height": 6,
+                  "properties": {
+                    "metrics": [
+                      [ "AWS/S3", "BucketSizeBytes", "BucketName", "${AssetsBucketName}", "StorageType", "StandardStorage" ],
+                      [ ".", "NumberOfObjects", ".", ".", ".", "." ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "${AWS::Region}",
+                    "title": "Assets Bucket Storage",
+                    "period": 86400
+                  }
+                },
+                {
+                  "type": "metric",
+                  "x": 0,
+                  "y": 12,
+                  "width": 24,
+                  "height": 6,
+                  "properties": {
+                    "metrics": [
+                      [ "AWS/SNS", "NumberOfMessagesPublished", "TopicName", "${NotificationsTopicName}" ],
+                      [ ".", "NumberOfNotificationsFailed", ".", "." ]
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "${AWS::Region}",
+                    "title": "User Notifications",
+                    "period": 300
+                  }
+                }
+              ]
             }
-          ]
-        }
-
-  # CloudWatch Alarms - EC2 Backend
+          - AutoScalingGroupName: !ImportValue trip-planner-backend-AutoScalingGroupName
+            AlbFullName: !ImportValue trip-planner-backend-AlbFullName
+            UsersTableName: !ImportValue trip-planner-dynamodb-users-table-name
+            ItinerariesTableName: !ImportValue trip-planner-dynamodb-itineraries-table-name
+            AssetsBucketName: !ImportValue trip-planner-assets-bucket-name
+            NotificationsTopicName: !Select [5, !Split(':', !ImportValue trip-planner-notifications-topic-arn)]
   HighCPUAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub "trip-planner-high-cpu-${AWS::AccountId}"
-      AlarmDescription: "High CPU utilization on backend server"
+      AlarmDescription: "High CPU utilization on backend Auto Scaling group"
       MetricName: CPUUtilization
       Namespace: AWS/EC2
       Statistic: Average
@@ -143,41 +143,18 @@ Resources:
       Threshold: 80
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
-        - Name: InstanceId
-          Value: !Ref BackendInstanceId
+        - Name: AutoScalingGroupName
+          Value: !ImportValue trip-planner-backend-AutoScalingGroupName
       AlarmActions:
-        - !Ref CloudWatchAlarmsTopic
+        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
       OKActions:
-        - !Ref CloudWatchAlarmsTopic
+        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
 
-  LowDiskSpaceAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "trip-planner-low-disk-space-${AWS::AccountId}"
-      AlarmDescription: "Low disk space on backend server"
-      MetricName: DiskSpaceUtilization
-      Namespace: System/Linux
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 85
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: InstanceId
-          Value: !Ref BackendInstanceId
-        - Name: MountPath
-          Value: /
-        - Name: Filesystem
-          Value: /dev/xvda1
-      AlarmActions:
-        - !Ref CloudWatchAlarmsTopic
-
-  # CloudWatch Alarms - Load Balancer
   HighResponseTimeAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub "trip-planner-high-response-time-${AWS::AccountId}"
-      AlarmDescription: "High response time on load balancer"
+      AlarmDescription: "High response time on application load balancer"
       MetricName: TargetResponseTime
       Namespace: AWS/ApplicationELB
       Statistic: Average
@@ -187,15 +164,15 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: LoadBalancer
-          Value: !Ref ALBArn
+          Value: !ImportValue trip-planner-backend-AlbFullName
       AlarmActions:
-        - !Ref CloudWatchAlarmsTopic
+        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
 
   HighErrorRateAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub "trip-planner-high-error-rate-${AWS::AccountId}"
-      AlarmDescription: "High error rate on load balancer"
+      AlarmDescription: "5XX error count on target group exceeded threshold"
       MetricName: HTTPCode_Target_5XX_Count
       Namespace: AWS/ApplicationELB
       Statistic: Sum
@@ -205,16 +182,15 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: LoadBalancer
-          Value: !Ref ALBArn
+          Value: !ImportValue trip-planner-backend-AlbFullName
       AlarmActions:
-        - !Ref CloudWatchAlarmsTopic
+        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
 
-  # CloudWatch Alarms - DynamoDB
-  DynamoDBThrottlingAlarm:
+  DynamoDBUsersThrottlingAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: !Sub "trip-planner-dynamodb-throttling-${AWS::AccountId}"
-      AlarmDescription: "DynamoDB throttling detected"
+      AlarmName: !Sub "trip-planner-dynamodb-users-throttling-${AWS::AccountId}"
+      AlarmDescription: "DynamoDB throttling detected on users table"
       MetricName: ThrottledRequests
       Namespace: AWS/DynamoDB
       Statistic: Sum
@@ -224,16 +200,33 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: TableName
-          Value: trip-planner-attractions
+          Value: !ImportValue trip-planner-dynamodb-users-table-name
       AlarmActions:
-        - !Ref CloudWatchAlarmsTopic
+        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
 
-  # CloudWatch Alarms - S3
+  DynamoDBItinerariesThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "trip-planner-dynamodb-itineraries-throttling-${AWS::AccountId}"
+      AlarmDescription: "DynamoDB throttling detected on itineraries table"
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !ImportValue trip-planner-dynamodb-itineraries-table-name
+      AlarmActions:
+        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
+
   S3ErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub "trip-planner-s3-errors-${AWS::AccountId}"
-      AlarmDescription: "S3 errors detected"
+      AlarmDescription: "4XX errors detected on assets bucket"
       MetricName: 4xxErrors
       Namespace: AWS/S3
       Statistic: Sum
@@ -243,16 +236,17 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: BucketName
-          Value: !Sub "trip-planner-uploads-${AWS::AccountId}"
+          Value: !ImportValue trip-planner-assets-bucket-name
+        - Name: FilterId
+          Value: EntireBucket
       AlarmActions:
-        - !Ref CloudWatchAlarmsTopic
+        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
 
-  # CloudWatch Alarms - SNS
   SNSPublishErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub "trip-planner-sns-publish-errors-${AWS::AccountId}"
-      AlarmDescription: "SNS publish errors detected"
+      AlarmDescription: "SNS publish failures detected on notifications topic"
       MetricName: NumberOfNotificationsFailed
       Namespace: AWS/SNS
       Statistic: Sum
@@ -262,11 +256,17 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: TopicName
-          Value: !Sub "trip-planner-notifications-${AWS::AccountId}"
+          Value: !Select [5, !Split(':', !ImportValue trip-planner-notifications-topic-arn)]
       AlarmActions:
-        - !Ref CloudWatchAlarmsTopic
+        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
 
-  # IAM Role for CloudWatch Agent
+  CloudWatchAlarmsSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !ImportValue trip-planner-cloudwatch-alarms-topic-arn
+      Protocol: email
+      Endpoint: !Ref AlarmEmail
+
   CloudWatchAgentRole:
     Type: AWS::IAM::Role
     Properties:
@@ -293,13 +293,12 @@ Resources:
                   - logs:DescribeLogStreams
                 Resource: "*"
 
-  # CloudWatch Insights Query
   ErrorLogsQuery:
     Type: AWS::CloudWatch::QueryDefinition
     Properties:
       Name: "Trip Planner Error Logs"
       LogGroupNames:
-        - !Ref BackendLogGroup
+        - !ImportValue trip-planner-backend-LogGroupName
       QueryString: |
         fields @timestamp, @message
         | filter @message like /ERROR/
@@ -308,19 +307,17 @@ Resources:
 
 Outputs:
   DashboardURL:
-    Description: "CloudWatch Dashboard URL"
-    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=${TripPlannerDashboard}"
+    Description: CloudWatch dashboard URL
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${TripPlannerDashboard}"
     Export:
       Name: !Sub "${AWS::StackName}-DashboardURL"
-
-  BackendLogGroupName:
-    Description: "Backend Log Group Name"
-    Value: !Ref BackendLogGroup
+  FrontendLogGroupName:
+    Description: Frontend log group name
+    Value: !Ref FrontendLogGroup
     Export:
-      Name: !Sub "${AWS::StackName}-BackendLogGroup"
-
+      Name: !Sub "${AWS::StackName}-FrontendLogGroup"
   CloudWatchAgentRoleArn:
-    Description: "CloudWatch Agent Role ARN"
+    Description: CloudWatch agent role ARN
     Value: !GetAtt CloudWatchAgentRole.Arn
     Export:
       Name: !Sub "${AWS::StackName}-CloudWatchAgentRole"

@@ -5,7 +5,7 @@
 
 ## Overview
 
-Basic CloudWatch monitoring setup for the Trip Planner application.
+Basic CloudWatch monitoring setup for the travel Planner application.
 
 ---
 
@@ -20,8 +20,8 @@ Basic CloudWatch monitoring setup for the Trip Planner application.
   - Network traffic
 
 ### 2. **Log Groups**
-- **Backend Logs**: `/aws/ec2/trip-planner-backend-849354442724`
-- **Frontend Logs**: `/aws/cloudfront/trip-planner-frontend-849354442724`
+- **Backend Logs**: `/aws/ec2/travel-planner-backend-849354442724`
+- **Frontend Logs**: `/aws/cloudfront/travel-planner-frontend-849354442724`
 - **Retention**: 30 days
 
 ### 3. **Basic Alerts**
@@ -37,7 +37,7 @@ Basic CloudWatch monitoring setup for the Trip Planner application.
 
 ```bash
 aws cloudformation deploy \
-  --stack-name trip-planner-cloudwatch \
+  --stack-name travel-planner-cloudwatch \
   --template-file cloudwatch-monitoring.yaml \
   --region us-east-1 \
   --parameter-overrides \
@@ -66,7 +66,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-logger = logging.getLogger('trip-planner')
+logger = logging.getLogger('travel-planner')
 
 # Usage
 logger.info("Application started")
@@ -85,4 +85,4 @@ logger.error("Error occurred")
 
 ---
 
-**Basic CloudWatch Setup Complete!** 📊✅
+**Basic CloudWatch Setup Complete!** 

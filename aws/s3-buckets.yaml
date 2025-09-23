@@ -123,18 +123,26 @@ Resources:
   #                 - - "arn:aws:cloudfront::"
   #                   - !Ref AWS::AccountId
   #                   - ":distribution/"
-  #                   - !ImportValue trip-planner-frontend-cf-DistributionId
+  #                   - !ImportValue travel-planner-frontend-cf-DistributionId
 
 Outputs:
   AssetsBucketName:
     Description: Name of the assets S3 bucket
     Value: !Ref AssetsBucket
+    Export:
+      Name: travel-planner-assets-bucket-name
   FrontendBucketName:
     Description: Name of the frontend S3 bucket
     Value: !Ref FrontendBucket
+    Export:
+      Name: travel-planner-frontend-bucket-name
   AssetsBucketArn:
     Description: ARN of the assets S3 bucket
     Value: !GetAtt AssetsBucket.Arn
+    Export:
+      Name: travel-planner-assets-bucket-arn
   FrontendBucketArn:
     Description: ARN of the frontend S3 bucket
     Value: !GetAtt FrontendBucket.Arn
+    Export:
+      Name: travel-planner-frontend-bucket-arn

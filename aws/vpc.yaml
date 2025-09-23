@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: VPC for Trip Planner
+Description: VPC for travel Planner
 
 Resources:
   VPC:
@@ -10,7 +10,7 @@ Resources:
       EnableDnsSupport: true
       Tags:
         - Key: Name
-          Value: trip-planner-vpc
+          Value: travel-planner-vpc
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
@@ -21,7 +21,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: trip-planner-public-1
+          Value: travel-planner-public-1
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -32,14 +32,14 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: trip-planner-public-2
+          Value: travel-planner-public-2
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: trip-planner-igw
+          Value: travel-planner-igw
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -53,7 +53,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: trip-planner-public-rt
+          Value: travel-planner-public-rt
 
   PublicRoute:
     Type: AWS::EC2::Route
@@ -79,8 +79,8 @@ Outputs:
   VpcId:
     Value: !Ref VPC
     Export:
-      Name: trip-planner-vpc-id
+      Name: travel-planner-vpc-id
   PublicSubnets:
     Value: !Join [',', [!Ref PublicSubnet1, !Ref PublicSubnet2]]
     Export:
-      Name: trip-planner-public-subnets
+      Name: travel-planner-public-subnets

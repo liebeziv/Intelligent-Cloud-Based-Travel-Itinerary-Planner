@@ -9,7 +9,7 @@ Parameters:
     Description: Two public subnets in different AZs (for ALB & ASG)
   ContainerImage:
     Type: String
-    Default: "849354442724.dkr.ecr.us-east-1.amazonaws.com/trip-planner-backend:latest"
+    Default: "849354442724.dkr.ecr.us-east-1.amazonaws.com/travel-planner-backend:latest"
     Description: Container image URI (ECR or public registry) for the backend
   InstanceType:
     Type: String
@@ -20,11 +20,11 @@ Parameters:
     Default: 8000
   DdbUsersTable:
     Type: String
-    Default: "trip-planner-users-849354442724"
+    Default: "travel-planner-users-849354442724"
     Description: DynamoDB table for user profiles
   DdbItinsTable:
     Type: String
-    Default: "trip-planner-itineraries-849354442724"
+    Default: "travel-planner-itineraries-849354442724"
     Description: DynamoDB table for itineraries
   HealthCheckPath:
     Type: String
@@ -56,7 +56,7 @@ Parameters:
     Description: Existing S3 bucket that stores uploaded assets
   LogGroupName:
     Type: String
-    Default: "/aws/ec2/trip-planner-backend"
+    Default: "/aws/ec2/travel-planner-backend-849354442724"
     Description: CloudWatch Logs group for container stdout/stderr
 
 Resources:
@@ -286,13 +286,40 @@ Outputs:
   AlbDNSName:
     Description: Public URL for backend (HTTP)
     Value: !GetAtt ALB.DNSName
+    Export:
+      Name: travel-planner-backend-AlbDNSName
+  AlbArn:
+    Description: ARN of the application load balancer
+    Value: !GetAtt ALB.LoadBalancerArn
+    Export:
+      Name: travel-planner-backend-AlbArn
+  AlbFullName:
+    Description: CloudWatch dimension value for the ALB
+    Value: !GetAtt ALB.LoadBalancerFullName
+    Export:
+      Name: travel-planner-backend-AlbFullName
   TargetGroupArn:
     Description: Target group ARN
     Value: !Ref TargetGroup
+    Export:
+      Name: travel-planner-backend-TargetGroupArn
+  TargetGroupFullName:
+    Description: CloudWatch dimension value for the target group
+    Value: !GetAtt TargetGroup.TargetGroupFullName
+    Export:
+      Name: travel-planner-backend-TargetGroupFullName
   InstanceRoleName:
     Description: EC2 instance role name
     Value: !Ref BackendRole
+    Export:
+      Name: travel-planner-backend-InstanceRoleName
   LogGroup:
     Description: CloudWatch Logs group receiving container output
     Value: !Ref LogGroupName
-
+    Export:
+      Name: travel-planner-backend-LogGroupName
+  AutoScalingGroupName:
+    Description: Auto Scaling group managing the backend instances
+    Value: !Ref AutoScalingGroup
+    Export:
+      Name: travel-planner-backend-AutoScalingGroupName
