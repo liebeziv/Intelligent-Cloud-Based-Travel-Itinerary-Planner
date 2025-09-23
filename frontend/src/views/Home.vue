@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="container mt-4">
     <div class="text-center mb-4">
       <h2>AI-Powered Travel Recommendations</h2>
@@ -160,7 +160,7 @@
                           
                           <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="badge bg-primary">{{ attraction.category }}</span>
-                            <span class="badge bg-warning text-dark">★ {{ attraction.rating }}</span>
+                            <span class="badge bg-warning text-dark">鈽?{{ attraction.rating }}</span>
                           </div>
 
                           <div class="small text-muted mb-2">
@@ -208,15 +208,15 @@
                 <div class="card-body p-2">
                   <div class="d-flex align-items-center">
                     <div class="weather-icon me-2">
-                      {{ weatherInfo.condition === 'sunny' ? '☀️' : 
-                         weatherInfo.condition === 'cloudy' ? '☁️' : 
-                         weatherInfo.condition === 'rainy' ? '🌧️' : '🌤️' }}
+                      {{ weatherInfo.condition === 'sunny' ? '\u2600\uFE0F' :
+                         weatherInfo.condition === 'cloudy' ? '\u2601\uFE0F' :
+                         weatherInfo.condition === 'rainy' ? '\u{1F327}\uFE0F' : '\u{1F324}\uFE0F' }}
                     </div>
                     <div>
-                      <div><strong>{{ weatherInfo.temperature }}°C</strong></div>
+                      <div><strong>{{ weatherInfo.temperature }}掳C</strong></div>
                       <div class="small text-muted">{{ weatherInfo.condition }}</div>
                       <div class="small" :class="weatherInfo.suitable_for_outdoor ? 'text-success' : 'text-warning'">
-                        {{ weatherInfo.suitable_for_outdoor ? '✓ Good for outdoor activities' : '⚠️ Consider indoor activities' }}
+                        {{ weatherInfo.suitable_for_outdoor ? '\u2705 Good for outdoor activities' : '\u26A0\uFE0F Consider indoor activities' }}
                       </div>
                     </div>
                   </div>
@@ -250,7 +250,7 @@
               
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="badge bg-primary">{{ rec.category }}</span>
-                <span class="badge bg-warning text-dark">★ {{ rec.rating }}</span>
+                <span class="badge bg-warning text-dark">鈽?{{ rec.rating }}</span>
               </div>
 
               <div class="small text-muted mb-2">
@@ -277,7 +277,7 @@
               <p class="card-text small">{{ attraction.description }}</p>
               <div>
                 <span class="badge bg-primary me-1">{{ attraction.category }}</span>
-                <span class="badge bg-warning text-dark">★ {{ attraction.rating }}</span>
+                <span class="badge bg-warning text-dark">鈽?{{ attraction.rating }}</span>
               </div>
             </div>
           </div>
@@ -291,7 +291,7 @@
 import L from 'leaflet'
 
 
-const API_BASE_URL = 'http://travelplannerbackend-env.eba-p7nfszip.us-east-1.elasticbeanstalk.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://travelplan.us-east-1.elasticbeanstalk.com';
 export default {
   name: 'Home',
   data() {
@@ -555,7 +555,7 @@ export default {
       if (this.location.address.includes('Christchurch')) baseTemp = 15;
       if (this.location.address.includes('Hamilton')) baseTemp = 18;
       
-      const temperature = baseTemp + Math.floor(Math.random() * 8) - 4; // ±4 degrees variation
+      const temperature = baseTemp + Math.floor(Math.random() * 8) - 4; // 卤4 degrees variation
       
       this.weatherInfo = {
         condition: randomCondition,
@@ -610,8 +610,8 @@ export default {
             attributionControl: true
           });
 
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
+          L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '漏 OpenStreetMap contributors',
             maxZoom: 19
           }).addTo(this.map);
 
@@ -729,3 +729,7 @@ export default {
   border: none;
 }
 </style>
+
+
+
+

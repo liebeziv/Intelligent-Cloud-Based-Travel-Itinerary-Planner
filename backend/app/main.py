@@ -44,9 +44,10 @@ s3utils = None
 sns_utils = None
 
 try:
-    import auth
-    import s3utils  
-    import sns_utils
+    # Use absolute package imports to ensure correctness under Gunicorn/EB
+    from app import auth
+    from app import s3utils
+    from app import sns_utils
     logger.info("✓ Core modules loaded successfully")
     print("Core modules loaded successfully")
 except ImportError as e:
@@ -112,7 +113,8 @@ logger.info("Adding CORS middleware...")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://d35vyyonooyid7.cloudfront.net",
+        "http://d35vyyonooyid7.cloudfront.net",
+        "http://travelplan.us-east-1.elasticbeanstalk.com/",
         "http://localhost:3000",  
         "http://localhost:8080",  
         "*"  
@@ -239,7 +241,7 @@ def test_endpoint():
 
 @app.get("/api/debug")
 def debug_info():
-    """返回调试信息"""
+    
     logger.info("Debug endpoint accessed")
     return {
         "python_version": sys.version,

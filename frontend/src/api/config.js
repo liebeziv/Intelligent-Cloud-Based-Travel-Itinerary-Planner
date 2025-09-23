@@ -1,5 +1,6 @@
 ﻿// frontend/src/api/config.js
-const API_BASE_URL = 'http://travelplannerbackend-env.eba-p7nfszip.us-east-1.elasticbeanstalk.com';
+// Prefer environment-provided API base, fallback to a placeholder (please override via VITE_API_URL)
+const API_BASE_URL = 'https://travelplan.us-east-1.elasticbeanstalk.com';
 
 export const apiConfig = {
   baseURL: API_BASE_URL,

@@ -5,7 +5,7 @@
         <router-link class="navbar-brand" to="/">
           <i class="fas fa-plane me-2"></i>Travel Planner
         </router-link>
-        
+
         <div class="navbar-nav ms-auto" v-if="!isLoggedIn">
           <router-link class="nav-link" to="/login">Login</router-link>
           <router-link class="nav-link" to="/register">Register</router-link>
