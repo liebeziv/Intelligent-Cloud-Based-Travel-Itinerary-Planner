@@ -222,7 +222,7 @@
               
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="badge bg-primary">{{ rec.category }}</span>
-                <span class="badge bg-warning text-dark">‚ò?{{ rec.rating }}</span>
+                <span class="badge bg-warning text-dark">‚≠ê{{ rec.rating }}</span>
               </div>
 
               <div class="small text-muted mb-2">
@@ -249,7 +249,7 @@
               <p class="card-text small">{{ attraction.description }}</p>
               <div>
                 <span class="badge bg-primary me-1">{{ attraction.category }}</span>
-                <span class="badge bg-warning text-dark">‚ò?{{ attraction.rating }}</span>
+                <span class="badge bg-warning text-dark">‚≠ê‚≠ê{{ attraction.rating }}</span>
               </div>
             </div>
           </div>
@@ -553,7 +553,7 @@ export default {
 
     formatTravel(travel) {
       if (!travel || travel.distance_km == null) {
-        return '°™'
+        return '‚≠ê'
       }
       return `${travel.distance_km} km - ${travel.duration_minutes} min`
     },
