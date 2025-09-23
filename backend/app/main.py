@@ -1,13 +1,23 @@
-﻿import os
+import os
 import sys
 import uuid
 import datetime
 import logging
 import traceback
+from typing import Optional
+
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.responses import JSONResponse
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.routes.recommendations import init_recommendation_service, recommendation_service
+from app.schemas.itinerary import ItineraryPlanRequest, ItineraryPlan
+from app.schemas.recommendation import RecommendationRequest
+from app.services.dynamodb_repository import itinerary_repository
+from app.services.itinerary_planner import itinerary_planner
+from app.services.notification_service import notification_service
 
 
 log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -48,10 +58,10 @@ try:
     from app import auth
     from app import s3utils
     from app import sns_utils
-    logger.info("✓ Core modules loaded successfully")
+    logger.info("? Core modules loaded successfully")
     print("Core modules loaded successfully")
 except ImportError as e:
-    logger.error(f"✗ Failed to import core modules: {e}")
+    logger.error(f"? Failed to import core modules: {e}")
     logger.error(f"Traceback: {traceback.format_exc()}")
     print(f"Warning: Failed to import core modules: {e}")
   
@@ -85,14 +95,25 @@ except ImportError as e:
     auth = MockAuth()
     s3utils = MockS3()
     sns_utils = MockSNS()
-    logger.info("✓ Mock modules created successfully")
+    logger.info("? Mock modules created successfully")
+
+optional_security = HTTPBearer(auto_error=False)
+
+async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security)):
+    if not credentials:
+        return None
+    try:
+        return auth.get_current_user(credentials)
+    except HTTPException:
+        return None
+
 
 
 HAS_RECOMMENDATIONS = False
 try:
     from app.api.routes.recommendations import router as recommendation_router
     HAS_RECOMMENDATIONS = True
-    logger.info("✓ Recommendations module loaded successfully")
+    logger.info("? Recommendations module loaded successfully")
     print("Recommendations module loaded successfully")
 except ImportError as e:
     HAS_RECOMMENDATIONS = False
@@ -106,15 +127,16 @@ app = FastAPI(
     description="AI-powered travel itinerary planner focused on New Zealand tourism",
     version="1.0.0"
 )
-logger.info("✓ FastAPI instance created")
+logger.info("? FastAPI instance created")
 
 
 logger.info("Adding CORS middleware...")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://d35vyyonooyid7.cloudfront.net",
-        "http://travelplan.us-east-1.elasticbeanstalk.com/",
+        "https://aitravelplan.site",
+        "https://www.aitravelplan.site",
+        "https://d35vyyonooyid7.cloudfront.net",
         "http://localhost:3000",  
         "http://localhost:8080",  
         "*"  
@@ -123,18 +145,55 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
-logger.info("✓ CORS middleware added")
+logger.info("? CORS middleware added")
 
 
 if HAS_RECOMMENDATIONS:
     try:
         app.include_router(recommendation_router)
-        logger.info("✓ Recommendation router included")
+        logger.info("? Recommendation router included")
         print("Recommendation router included")
     except Exception as e:
-        logger.error(f"✗ Failed to include recommendation router: {e}")
+        logger.error(f"? Failed to include recommendation router: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         print(f"Failed to include recommendation router: {e}")
+
+
+@app.post("/api/itineraries/plan", response_model=ItineraryPlan)
+async def plan_itinerary_endpoint(
+    request: ItineraryPlanRequest,
+    current_user=Depends(get_optional_user),
+):
+    try:
+        recommendation_request = RecommendationRequest(**request.model_dump(exclude={"save"}))
+        await init_recommendation_service()
+        recommendation_response = await recommendation_service.get_recommendations(recommendation_request)
+
+        recommendation_dicts = [rec.model_dump() for rec in recommendation_response.recommendations]
+        plan_payload = itinerary_planner.build_itinerary(recommendation_request, recommendation_dicts)
+
+        context_message = (
+            recommendation_response.context.get("message")
+            if isinstance(recommendation_response.context, dict)
+            else None
+        )
+        plan_payload["context"] = context_message
+        plan_payload["recommendations"] = recommendation_response.recommendations
+
+        itinerary_plan = ItineraryPlan(**plan_payload)
+
+        if request.save and current_user:
+            stored_payload = itinerary_plan.model_dump()
+            stored_payload["user_id"] = current_user["id"]
+            itinerary_repository.save_itinerary(current_user["id"], stored_payload)
+            notification_service.send_itinerary_notification(
+                current_user.get("email"), itinerary_plan.itinerary_id
+            )
+
+        return itinerary_plan
+    except Exception as exc:
+        logger.error(f"Itinerary planning failed: {exc}")
+        raise HTTPException(status_code=500, detail="Failed to generate itinerary")
 
 
 class RegisterRequest(BaseModel):
@@ -168,14 +227,14 @@ async def startup_event():
             from app.api.routes.recommendations import recommendation_service
             from app.data.sample_attractions import SAMPLE_NZ_ATTRACTIONS
             await recommendation_service.initialize(SAMPLE_NZ_ATTRACTIONS)
-            logger.info("✓ Recommendation system initialized successfully")
+            logger.info("? Recommendation system initialized successfully")
             print("Recommendation system initialized successfully")
         except Exception as e:
-            logger.error(f"✗ Recommendation system initialization failed: {e}")
+            logger.error(f"? Recommendation system initialization failed: {e}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             print(f"Warning: Recommendation system initialization failed: {e}")
     
-    logger.info("✓ API startup completed successfully")
+    logger.info("? API startup completed successfully")
     print("API startup completed successfully")
 
 
@@ -354,7 +413,7 @@ def upload_url(filename: str, current_user=Depends(auth.get_current_user)):
 
 
 application = app
-logger.info("✓ Application object created for AWS EB")
+logger.info("? Application object created for AWS EB")
 
 
 if __name__ == "__main__":
@@ -370,3 +429,9 @@ if __name__ == "__main__":
     )
 
     
+
+
+
+
+
+

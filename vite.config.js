@@ -8,7 +8,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://travelplan.us-east-1.elasticbeanstalk.com',
+        target: 'https://aitravelplan.site',
         changeOrigin: true
       }
     }
