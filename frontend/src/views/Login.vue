@@ -58,6 +58,15 @@ export default {
         })
 
         localStorage.setItem('token', response.data.access_token)
+        if (response.data.user) {
+          localStorage.setItem('userName', response.data.user.name || '')
+          localStorage.setItem('userEmail', response.data.user.email || this.email)
+          if (response.data.user.id) {
+            localStorage.setItem('userId', String(response.data.user.id))
+          }
+        } else {
+          localStorage.setItem('userEmail', this.email)
+        }
         alert('Login successful!')
         this.$router.push('/') 
 
