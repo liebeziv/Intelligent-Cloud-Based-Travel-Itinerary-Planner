@@ -101,7 +101,7 @@ aws s3 cp file.txt s3://bucket-name/
 
 ####  FrontendPublisher Role   
 **Permissions:**
-- **S3**: List, upload, delete objects in `travel-planner-frontend-849354442724` bucket
+- **S3**: List, upload, delete objects in `travel-planner-frontend-849354442724-lz` bucket
 - **CloudFront**: Create invalidations for distribution `EIQO53JTN0IXU` only
 
 ####  Observer Role
