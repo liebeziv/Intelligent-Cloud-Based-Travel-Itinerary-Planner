@@ -5,7 +5,10 @@
 
 ## Overview
 
-Basic CloudWatch monitoring setup for the travel Planner application.
+Basic CloudWatch monitoring setup for the Trip Planner application.
+
+## Prerequisites
+- Deploy the VPC, S3 buckets, DynamoDB tables, SNS topics, and EC2/ALB stacks first so their exports exist (the monitoring stack imports them).
 
 ---
 
@@ -37,11 +40,11 @@ Basic CloudWatch monitoring setup for the travel Planner application.
 
 ```bash
 aws cloudformation deploy \
-  --stack-name travel-planner-cloudwatch \
+  --stack-name trip-planner-cloudwatch \
   --template-file cloudwatch-monitoring.yaml \
   --region us-east-1 \
   --parameter-overrides \
-    NotificationEmail="sc1040@students.waikato.ac.nz"
+    AlarmEmail="sc1040@students.waikato.ac.nz"
 ```
 
 ### 2. **Install CloudWatch Agent**

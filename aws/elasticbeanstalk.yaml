@@ -1,0 +1,209 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Elastic Beanstalk environment for Travel Planner Backend
+
+Parameters:
+  ApplicationName:
+    Type: String
+    Default: travel-planner-backend
+    Description: Elastic Beanstalk application name
+  
+  EnvironmentName:
+    Type: String
+    Default: travel-planner-prod
+    Description: Environment name
+  
+  SolutionStackName:
+    Type: String
+    Default: "64bit Amazon Linux 2023 v4.0.1 running Python 3.11"
+    Description: Elastic Beanstalk solution stack
+
+Resources:
+  # S3 Bucket for EB deployments
+  EBDeploymentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "travel-planner-eb-deployments-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
+  # EB Application
+  EBApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: !Ref ApplicationName
+      Description: Travel Planner Backend Application
+      ResourceLifecycleConfig:
+        ServiceRole: !GetAtt EBServiceRole.Arn
+        VersionLifecycleConfig:
+          MaxCountRule:
+            DeleteSourceFromS3: true
+            Enabled: true
+            MaxCount: 10
+
+  # EB Environment
+  EBEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref EBApplication
+      EnvironmentName: !Ref EnvironmentName
+      SolutionStackName: !Ref SolutionStackName
+      OptionSettings:
+        # VPC Configuration
+        - Namespace: aws:ec2:vpc
+          OptionName: VPCId
+          Value: !ImportValue travel-planner-vpc-id
+        - Namespace: aws:ec2:vpc
+          OptionName: Subnets
+          Value: !ImportValue travel-planner-public-subnets
+        - Namespace: aws:ec2:vpc
+          OptionName: ELBSubnets
+          Value: !ImportValue travel-planner-public-subnets
+        
+        # Instance Configuration
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: InstanceType
+          Value: t3.micro
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: IamInstanceProfile
+          Value: !Ref EBInstanceProfile
+        
+        # Auto Scaling
+        - Namespace: aws:autoscaling:asg
+          OptionName: MinSize
+          Value: 1
+        - Namespace: aws:autoscaling:asg
+          OptionName: MaxSize
+          Value: 3
+        
+        # Load Balancer
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: EnvironmentType
+          Value: LoadBalanced
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: LoadBalancerType
+          Value: application
+        
+        # Health Monitoring
+        - Namespace: aws:elasticbeanstalk:healthreporting:system
+          OptionName: SystemType
+          Value: enhanced
+        
+        # Environment Variables
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: AWS_REGION
+          Value: !Ref AWS::Region
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: DYNAMODB_USERS_TABLE
+          Value: !ImportValue travel-planner-dynamodb-users-table-name
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: DYNAMODB_ITINERARIES_TABLE
+          Value: !ImportValue travel-planner-dynamodb-itineraries-table-name
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: S3_ASSETS_BUCKET
+          Value: !ImportValue travel-planner-assets-bucket-name
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: SNS_NOTIFICATIONS_TOPIC
+          Value: !ImportValue travel-planner-notifications-topic-arn
+
+  # IAM Roles
+  EBServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: elasticbeanstalk.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy
+
+  EBInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "travel-planner-eb-instance-role-${AWS::AccountId}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:*
+                Resource:
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/travel-planner-*"
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub "${ImportValue travel-planner-assets-bucket-arn}/*"
+        - PolicyName: SNSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: "*"
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:trip-planner/*"
+
+  EBInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EBInstanceRole
+
+Outputs:
+  ApplicationName:
+    Value: !Ref EBApplication
+    Export:
+      Name: travel-planner-eb-application
+  
+  EnvironmentName:
+    Value: !Ref EBEnvironment
+    Export:
+      Name: travel-planner-eb-environment
+  
+  EnvironmentURL:
+    Value: !GetAtt EBEnvironment.EndpointURL
+    Export:
+      Name: travel-planner-eb-url
+  
+  DeploymentBucket:
+    Value: !Ref EBDeploymentBucket
+    Export:
+      Name: travel-planner-eb-deployment-bucket

@@ -11,8 +11,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.responses import JSONResponse
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
 
 from app.api.routes.recommendations import init_recommendation_service, recommendation_service
+from app.aws_services import aws_services
 from app.schemas.itinerary import ItineraryPlanRequest, ItineraryPlan
 from app.schemas.recommendation import RecommendationRequest
 from app.services.dynamodb_repository import itinerary_repository
@@ -130,19 +132,33 @@ app = FastAPI(
 logger.info("? FastAPI instance created")
 
 
+def _populate_app_state(fastapi_app: FastAPI) -> None:
+    fastapi_app.state.aws_region = os.environ.get("AWS_REGION", "us-east-1")
+    fastapi_app.state.users_table = os.environ.get("DDB_USERS_TABLE")
+    fastapi_app.state.itineraries_table = os.environ.get("DDB_ITINS_TABLE")
+    fastapi_app.state.assets_bucket = os.environ.get("ASSETS_BUCKET")
+    fastapi_app.state.aws_services = aws_services
+    fastapi_app.state.dynamodb = getattr(aws_services, "dynamodb", None)
+    fastapi_app.state.s3 = getattr(aws_services, "s3", None)
+    fastapi_app.state.sns = getattr(aws_services, "sns", None)
+
+
+_populate_app_state(app)
+
+
 logger.info("Adding CORS middleware...")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://d35vyyonooyid7.cloudfront.net",
         "https://aitravelplan.site",
         "https://www.aitravelplan.site",
-        "https://d35vyyonooyid7.cloudfront.net",
-        "http://localhost:3000",  
-        "http://localhost:8080",  
-        "*"  
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:8080"
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 logger.info("? CORS middleware added")
@@ -370,11 +386,15 @@ def create_itinerary(payload: ItineraryRequest, current_user=Depends(auth.get_cu
             "items": payload.items,
             "createdAt": datetime.datetime.utcnow().isoformat()
         }
-        
+
+        itinerary_repository.save_itinerary(current_user['id'], obj.copy())
+
         # Upload to S3
-        s3utils.put_json_object(key, obj)
+        if s3utils:
+            s3utils.put_json_object(key, obj)
         # Send SNS notification
-        sns_utils.publish(f"New itinerary {it_id} by {current_user['email']}", subject="Itinerary Created")
+        if sns_utils:
+            sns_utils.publish(f"New itinerary {it_id} by {current_user['email']}", subject="Itinerary Created")
         logger.info(f"Itinerary created successfully: {it_id}")
         return {"id": it_id, "s3_key": key}
     except Exception as e:
@@ -387,10 +407,9 @@ def create_itinerary(payload: ItineraryRequest, current_user=Depends(auth.get_cu
 def get_itineraries(current_user=Depends(auth.get_current_user)):
     logger.info(f"Getting itineraries for user: {current_user}")
     try:
-        user_itineraries_prefix = f"itineraries/{current_user['id']}/"
-        # itineraries = s3utils.list_objects_with_prefix(user_itineraries_prefix)
-        logger.info("Itineraries retrieved successfully (empty list)")
-        return []
+        itineraries = itinerary_repository.list_itineraries(current_user['id'])
+        logger.info("Itineraries retrieved successfully")
+        return itineraries
     except Exception as e:
         logger.error(f"Error getting itineraries: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
@@ -414,6 +433,14 @@ def upload_url(filename: str, current_user=Depends(auth.get_current_user)):
 
 application = app
 logger.info("? Application object created for AWS EB")
+
+
+def create_app() -> FastAPI:
+    """Factory used by Elastic Beanstalk and local runners."""
+    return app
+
+
+handler = Mangum(create_app())
 
 
 if __name__ == "__main__":
