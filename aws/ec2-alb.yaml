@@ -1,6 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: EC2 + ALB for FastAPI backend (Docker). Health check; minimal IAM for S3/DynamoDB/Secrets/Logs. 
-
 Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
@@ -10,8 +9,8 @@ Parameters:
     Description: Two public subnets in different AZs (for ALB & ASG)
   ContainerImage:
     Type: String
-    Default: "your-image:latest"   # need to change to docker image，such as  docker.io/namespace/image:tag
-    Description: Public container image (Docker Hub/GHCR/etc)
+    Default: "849354442724.dkr.ecr.us-east-1.amazonaws.com/trip-planner-backend:latest"
+    Description: Container image URI (ECR or public registry) for the backend
   InstanceType:
     Type: String
     Default: "t3.micro"
@@ -21,33 +20,51 @@ Parameters:
     Default: 8000
   DdbUsersTable:
     Type: String
-    Default: "Users"
+    Default: "trip-planner-users-849354442724"
+    Description: DynamoDB table for user profiles
   DdbItinsTable:
     Type: String
-    Default: "Itineraries"
+    Default: "trip-planner-itineraries-849354442724"
+    Description: DynamoDB table for itineraries
   HealthCheckPath:
     Type: String
     Default: "/health"
   MinSize:
     Type: Number
-    Default: 0
+    Default: 1
   DesiredCapacity:
     Type: Number
-    Default: 0
+    Default: 1
   MaxSize:
     Type: Number
-    Default: 1
+    Default: 2
   AmiIdParam:
     Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
     Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
-
+  ResourcePrefix:
+    Type: String
+    Default: "travelplanbackend"
+    AllowedPattern: "[a-zA-Z0-9-]+"
+    Description: Prefix used when naming AWS resources created by this stack
+  EnvironmentName:
+    Type: String
+    Default: "Travelplanbackend-env"
+    Description: Logical environment name applied as a tag
+  AssetsBucketName:
+    Type: String
+    Default: "travel-planner-assets-849354442724-lz"
+    Description: Existing S3 bucket that stores uploaded assets
+  LogGroupName:
+    Type: String
+    Default: "/aws/ec2/trip-planner-backend"
+    Description: CloudWatch Logs group for container stdout/stderr
 
 Resources:
   # ---------- IAM ----------
   BackendRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "trip-planner-backend-role-v5-${AWS::AccountId}"
+      RoleName: !Sub "${ResourcePrefix}-ec2-role-${AWS::AccountId}"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -58,11 +75,11 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
       Policies:
-        - PolicyName: trip-planner-backend-inline
+        - PolicyName: !Sub "${ResourcePrefix}-inline"
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # ECR permissions
+              # ECR permissions (only used when pulling from private ECR repositories)
               - Effect: Allow
                 Action:
                   - ecr:GetAuthorizationToken
@@ -84,7 +101,8 @@ Resources:
               # S3 uploads/reads for user-uploads prefix in Assets bucket
               - Effect: Allow
                 Action: ["s3:PutObject","s3:GetObject"]
-                Resource: !Sub "arn:aws:s3:::travel-planner-assets-${AWS::AccountId}/user-uploads/*"
+                Resource:
+                  - !Sub "arn:aws:s3:::${AssetsBucketName}/user-uploads/*"
               # Secrets Manager read
               - Effect: Allow
                 Action: ["secretsmanager:GetSecretValue"]
@@ -99,9 +117,9 @@ Resources:
     Properties:
       Roles: [ !Ref BackendRole ]
       Path: /
-      InstanceProfileName: !Sub "trip-planner-backend-instance-profile-v5-${AWS::AccountId}"
+      InstanceProfileName: !Sub "${ResourcePrefix}-ec2-instance-profile-${AWS::AccountId}"
 
-  # ---------- SG ----------
+  # ---------- Security groups ----------
   AlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -111,6 +129,11 @@ Resources:
         - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0 }
       SecurityGroupEgress:
         - { IpProtocol: -1, FromPort: 0, ToPort: 0, CidrIp: 0.0.0.0/0 }
+      Tags:
+        - Key: Name
+          Value: !Sub "${ResourcePrefix}-alb-sg"
+        - Key: Environment
+          Value: !Ref EnvironmentName
 
   AppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -124,11 +147,17 @@ Resources:
           SourceSecurityGroupId: !Ref AlbSecurityGroup
       SecurityGroupEgress:
         - { IpProtocol: -1, FromPort: 0, ToPort: 0, CidrIp: 0.0.0.0/0 }
+      Tags:
+        - Key: Name
+          Value: !Sub "${ResourcePrefix}-app-sg"
+        - Key: Environment
+          Value: !Ref EnvironmentName
 
   # ---------- ALB ----------
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
+      Name: !Sub "${ResourcePrefix}-tg"
       VpcId: !Ref VpcId
       Protocol: HTTP
       Port: !Ref AppPort
@@ -137,14 +166,25 @@ Resources:
       HealthCheckProtocol: HTTP
       HealthCheckPath: !Ref HealthCheckPath
       Matcher: { HttpCode: '200-399' }
+      Tags:
+        - Key: Name
+          Value: !Sub "${ResourcePrefix}-tg"
+        - Key: Environment
+          Value: !Ref EnvironmentName
 
   ALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
+      Name: !Sub "${ResourcePrefix}-alb"
       Scheme: internet-facing
       Type: application
       Subnets: !Ref PublicSubnets
       SecurityGroups: [ !Ref AlbSecurityGroup ]
+      Tags:
+        - Key: Name
+          Value: !Sub "${ResourcePrefix}-alb"
+        - Key: Environment
+          Value: !Ref EnvironmentName
 
   HTTPListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -160,14 +200,17 @@ Resources:
   LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /trip-planner/backend-v5
+      LogGroupName: !Ref LogGroupName
       RetentionInDays: 14
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
 
   # ---------- Launch Template / ASG ----------
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Sub "trip-planner-backend-lt-v5-${AWS::AccountId}"
+      LaunchTemplateName: !Sub "${ResourcePrefix}-lt-${AWS::AccountId}"
       LaunchTemplateData:
         IamInstanceProfile: { Name: !Ref BackendInstanceProfile }
         ImageId: !Ref AmiIdParam
@@ -180,34 +223,45 @@ Resources:
           Fn::Base64: !Sub |
             #!/bin/bash
             set -euo pipefail
-            PKG=""
-            if command -v dnf >/dev/null 2>&1; then PKG=dnf; elif command -v yum >/dev/null 2>&1; then PKG=yum; else PKG=microdnf; fi
+
+            if command -v dnf >/dev/null 2>&1; then
+              PKG=dnf
+            elif command -v yum >/dev/null 2>&1; then
+              PKG=yum
+            else
+              PKG=microdnf
+            fi
+
             $PKG -y install docker awscli jq || true
             systemctl enable --now docker
 
             REGION=${AWS::Region}
-            ASSETS_BUCKET="travel-planner-assets-${AWS::AccountId}"
+            ASSETS_BUCKET="${AssetsBucketName}"
             DDB_USERS="${DdbUsersTable}"
             DDB_ITINS="${DdbItinsTable}"
             IMAGE="${ContainerImage}"
+            LOG_GROUP="${LogGroupName}"
 
-            # ECR Login
-            aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin ${AWS::AccountId}.dkr.ecr.$REGION.amazonaws.com
+            if [[ "$IMAGE" == *.dkr.ecr.*amazonaws.com* ]]; then
+              REGISTRY="$\{IMAGE%%/*\}"
+              aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+            fi
 
-            docker pull "$IMAGE" || true
+            docker pull "$IMAGE"
             docker rm -f app || true
             docker run -d --name app -p ${AppPort}:${AppPort} \
               --log-driver awslogs \
-              --log-opt awslogs-group=/trip-planner/backend-v5 \
-              --log-opt awslogs-region=$REGION \
+              --log-opt awslogs-group="$LOG_GROUP" \
+              --log-opt awslogs-region="$REGION" \
               --log-opt awslogs-stream=app \
-              -e AWS_REGION=$REGION \
-              -e ASSETS_BUCKET=$ASSETS_BUCKET \
-              -e DDB_USERS_TABLE=$DDB_USERS \
-              -e DDB_ITINS_TABLE=$DDB_ITINS \
-              "$IMAGE" || true
+              -e AWS_REGION="$REGION" \
+              -e ASSETS_BUCKET="$ASSETS_BUCKET" \
+              -e DDB_USERS_TABLE="$DDB_USERS" \
+              -e DDB_ITINS_TABLE="$DDB_ITINS" \
+              "$IMAGE"
 
   AutoScalingGroup:
+    DependsOn: LogGroup
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier: !Ref PublicSubnets
@@ -216,10 +270,17 @@ Resources:
       DesiredCapacity: !Ref DesiredCapacity
       TargetGroupARNs: [ !Ref TargetGroup ]
       HealthCheckType: ELB
-      HealthCheckGracePeriod: 120
+      HealthCheckGracePeriod: 180
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
         Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      Tags:
+        - Key: Name
+          Value: !Sub "${ResourcePrefix}-ec2"
+          PropagateAtLaunch: true
+        - Key: Environment
+          Value: !Ref EnvironmentName
+          PropagateAtLaunch: true
 
 Outputs:
   AlbDNSName:
@@ -231,3 +292,7 @@ Outputs:
   InstanceRoleName:
     Description: EC2 instance role name
     Value: !Ref BackendRole
+  LogGroup:
+    Description: CloudWatch Logs group receiving container output
+    Value: !Ref LogGroupName
+
