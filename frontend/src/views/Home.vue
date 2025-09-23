@@ -1,4 +1,4 @@
-Ôªø<template>
+<template>
   <div class="container mt-4">
     <div class="text-center mb-4">
       <h2>AI-Powered Travel Recommendations</h2>
@@ -135,52 +135,36 @@
       <button type="button" class="btn-close float-end" @click="error = null"></button>
     </div>
 
+
     <!-- Itinerary Planning Results -->
     <div v-if="itinerary.length && !loading" class="mb-4">
-      <h4 class="mb-3">Your {{ preferences.duration }}-Day Itinerary</h4>
+      <h4 class="mb-3">Your {{ summary ? summary.total_days : preferences.duration }}-Day Itinerary</h4>
       
       <div class="row">
         <div class="col-lg-8">
-          <!-- Daily Itinerary -->
           <div class="accordion" id="itineraryAccordion">
-            <div class="accordion-item" v-for="(day, index) in itinerary" :key="index">
+            <div class="accordion-item" v-for="day in itinerary" :key="day.day_index">
               <h2 class="accordion-header">
-                <button class="accordion-button" :class="{ collapsed: index !== 0 }" type="button" 
-                        :data-bs-toggle="'collapse'" :data-bs-target="`#day${index + 1}`">
-                  <strong>Day {{ index + 1 }}</strong>
-                  <span class="ms-2 text-muted">{{ day.attractions.length }} attractions</span>
+                <button class="accordion-button" :class="{ collapsed: day.day_index !== 1 }" type="button"
+                        data-bs-toggle="collapse" :data-bs-target="`#day${day.day_index}`">
+                  <strong>Day {{ day.day_index }} - {{ formatDate(day.date) }}</strong>
+                  <span class="ms-2 text-muted">{{ day.segments.length }} stops - {{ day.total_distance_km }} km</span>
                 </button>
               </h2>
-              <div :id="`day${index + 1}`" class="accordion-collapse collapse" :class="{ show: index === 0 }"
+              <div :id="`day${day.day_index}`" class="accordion-collapse collapse" :class="{ show: day.day_index === 1 }"
                    data-bs-parent="#itineraryAccordion">
                 <div class="accordion-body">
-                  <div class="row">
-                    <div class="col-md-6 mb-3" v-for="attraction in day.attractions" :key="attraction.id">
-                      <div class="card h-100">
-                        <div class="card-body">
-                          <h6 class="card-title">{{ attraction.name }}</h6>
-                          <p class="card-text small">{{ attraction.description }}</p>
-                          
-                          <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="badge bg-primary">{{ attraction.category }}</span>
-                            <span class="badge bg-warning text-dark">ÈàΩ?{{ attraction.rating }}</span>
-                          </div>
-
-                          <div class="small text-muted mb-2">
-                            <div>Price: ${{ attraction.price_range[0] }} - ${{ attraction.price_range[1] }}</div>
-                            <div v-if="attraction.distance">Distance: {{ attraction.distance }}km</div>
-                            <div>Time: {{ attraction.estimated_time }}</div>
-                          </div>
-
-                          <div v-if="attraction.reasons && attraction.reasons.length" class="small">
-                            <strong>Why:</strong>
-                            <ul class="mb-1" style="padding-left: 1rem;">
-                              <li v-for="reason in attraction.reasons.slice(0,2)" :key="reason">{{ reason }}</li>
-                            </ul>
+                  <div class="list-group">
+                    <div class="list-group-item" v-for="segment in day.segments" :key="segment.attraction.id">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 class="mb-1">{{ segment.attraction.name }}</h6>
+                          <p class="mb-1 text-muted">{{ segment.attraction.description }}</p>
+                          <div class="small text-secondary">
+                            Arrival {{ formatTime(segment.arrival_time) }} - {{ formatTravel(segment.travel) }}
                           </div>
                         </div>
-                        
-
+                        <span class="badge bg-primary align-self-start">{{ segment.attraction.category }}</span>
                       </div>
                     </div>
                   </div>
@@ -189,58 +173,46 @@
             </div>
           </div>
         </div>
-        
-        <div class="col-lg-4">
-          <div class="card sticky-top">
-            <div class="card-header">
-              <h6 class="mb-0">Trip Overview</h6>
-            </div>
-            <div class="card-body">
-              <div class="mb-3">
-                <strong>Destination:</strong> {{ location.address }}<br>
-                <strong>Duration:</strong> {{ preferences.duration }} days<br>
-                <strong>Total Attractions:</strong> {{ totalAttractions }}<br>
-                <strong>Budget Range:</strong> ${{ minBudget }} - ${{ maxBudget }}
-              </div>
 
-              <!-- Weather Information -->
-              <div class="card mb-3" v-if="weatherInfo">
-                <div class="card-header">
-                  <h6 class="mb-0">Current Weather</h6>
-                </div>
-                <div class="card-body p-2">
-                  <div class="d-flex align-items-center">
-                    <div class="weather-icon me-2">
-                      {{ weatherInfo.condition === 'sunny' ? '\u2600\uFE0F' :
-                         weatherInfo.condition === 'cloudy' ? '\u2601\uFE0F' :
-                         weatherInfo.condition === 'rainy' ? '\u{1F327}\uFE0F' : '\u{1F324}\uFE0F' }}
-                    </div>
-                    <div>
-                      <div><strong>{{ weatherInfo.temperature }}Êé≥C</strong></div>
-                      <div class="small text-muted">{{ weatherInfo.condition }}</div>
-                      <div class="small" :class="weatherInfo.suitable_for_outdoor ? 'text-success' : 'text-warning'">
-                        {{ weatherInfo.suitable_for_outdoor ? '\u2705 Good for outdoor activities' : '\u26A0\uFE0F Consider indoor activities' }}
-                      </div>
-                    </div>
+        <div class="col-lg-4">
+          <div class="card mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Trip Summary</h5>
+              <ul class="list-unstyled mb-0">
+                <li><strong>Total attractions:</strong> {{ totalAttractions }}</li>
+                <li><strong>Total distance:</strong> {{ summary ? summary.total_distance_km : 0 }} km</li>
+                <li><strong>Total travel time:</strong> {{ summary ? Math.round(summary.total_travel_time_minutes) : 0 }} min</li>
+                <li><strong>Budget range:</strong> {{ minBudget }} - {{ maxBudget }} NZD</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" v-if="weatherInfo">
+            <div class="card-body">
+              <h5 class="card-title">Current Weather - {{ location.address }}</h5>
+              <div class="d-flex align-items-center">
+                <div class="display-6 me-3">{{ weatherInfo.temperature }}&deg;C</div>
+                <div>
+                  <div class="fw-bold text-capitalize">{{ weatherInfo.description || weatherInfo.condition }}</div>
+                  <div class="small text-muted">Wind {{ weatherInfo.wind_speed }} m/s - Humidity {{ weatherInfo.humidity }}%</div>
+                  <div class="small" :class="weatherInfo.suitable_for_outdoor ? 'text-success' : 'text-warning'">
+                    {{ weatherInfo.suitable_for_outdoor ? 'Great for outdoor activities' : 'Consider indoor alternatives' }}
                   </div>
-                </div>
-              </div>
-              
-              <div class="card">
-                <div class="card-header">
-                  <h6 class="mb-0">Locations Map</h6>
-                </div>
-                <div class="card-body p-0">
-                  <div ref="mapContainer" style="height: 300px; width: 100%; position: relative;"></div>
                 </div>
               </div>
             </div>
           </div>
+
+          <div class="card" v-if="itinerary.length">
+            <div class="card-body">
+              <h5 class="card-title">Route Map</h5>
+              <div id="map" style="height: 320px;"></div>
+            </div>
+          </div>
+        </div>
         </div>
       </div>
     </div>
-
-    <!-- All Recommendations (fallback) -->
     <div v-if="recommendations.length && !itinerary.length && !loading">
       <h4 class="mb-3">Recommended Attractions</h4>
       
@@ -253,7 +225,7 @@
               
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="badge bg-primary">{{ rec.category }}</span>
-                <span class="badge bg-warning text-dark">ÈàΩ?{{ rec.rating }}</span>
+                <span class="badge bg-warning text-dark">‚ò?{{ rec.rating }}</span>
               </div>
 
               <div class="small text-muted mb-2">
@@ -280,21 +252,19 @@
               <p class="card-text small">{{ attraction.description }}</p>
               <div>
                 <span class="badge bg-primary me-1">{{ attraction.category }}</span>
-                <span class="badge bg-warning text-dark">ÈàΩ?{{ attraction.rating }}</span>
+                <span class="badge bg-warning text-dark">‚ò?{{ attraction.rating }}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script>
 import L from 'leaflet'
+import { itineraryAPI } from '../services/api'
 
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://travelplan.us-east-1.elasticbeanstalk.com';
 export default {
   name: 'Home',
   data() {
@@ -303,6 +273,7 @@ export default {
       error: null,
       recommendations: [],
       itinerary: [],
+      summary: null,
       map: null,
       mapInitialized: false,
       showAdvanced: false,
@@ -314,7 +285,7 @@ export default {
         budget_range: [100, 400],
         travel_style: 'adventure',
         difficulty_preference: 'medium',
-        max_travel_distance: 50, // Default 50km
+        max_travel_distance: 50,
         group_size: 2,
         duration: 3,
         season: 'summer',
@@ -331,100 +302,101 @@ export default {
         'Auckland, New Zealand': { lat: -36.8485, lng: 174.7633 },
         'Christchurch, New Zealand': { lat: -43.5320, lng: 172.6306 }
       },
-              savedItineraries: [],
+      savedItineraries: [],
       defaultAttractions: [
         {
           id: 1,
-          name: "Milford Sound",
-          description: "Famous fiord in Fiordland National Park",
-          category: "nature",
+          name: 'Milford Sound',
+          description: 'Famous fiord in Fiordland National Park',
+          category: 'nature',
           rating: 4.8,
-          image: "/images/milford-sound.webp"
+          image: '/images/milford-sound.webp'
         },
         {
           id: 2,
-          name: "Queenstown Skyline Gondola",
-          description: "Scenic gondola ride",
-          category: "adventure",
+          name: 'Queenstown Skyline Gondola',
+          description: 'Scenic gondola ride',
+          category: 'adventure',
           rating: 4.6,
-          image: "/images/skyline-gondola.webp"
+          image: '/images/skyline-gondola.webp'
         }
       ]
     }
   },
   computed: {
     isLoggedIn() {
-      const token = localStorage.getItem('token');
-      return token && token.length > 0;
+      const token = localStorage.getItem('token')
+      return token && token.length > 0
     },
     userName() {
       return localStorage.getItem('userName') || 'User'
     },
-    authToken() {
-      return localStorage.getItem('token');
-    },
     totalAttractions() {
-      return this.itinerary.reduce((total, day) => total + day.attractions.length, 0);
+      return this.itinerary.reduce((total, day) => total + ((day.segments && day.segments.length) || 0), 0)
     },
     minBudget() {
-      if (!this.itinerary.length) return 0;
-      return Math.min(...this.itinerary.flatMap(day => 
-        day.attractions.map(a => a.price_range[0])
-      ));
+      const prices = []
+      this.itinerary.forEach(day => {
+        (day.segments || []).forEach(segment => {
+          const range = segment.attraction?.price_range
+          if (range && range.length) {
+            prices.push(range[0])
+          }
+        })
+      })
+      return prices.length ? Math.min(...prices) : 0
     },
     maxBudget() {
-      if (!this.itinerary.length) return 0;
-      return Math.max(...this.itinerary.flatMap(day => 
-        day.attractions.map(a => a.price_range[1])
-      ));
+      const prices = []
+      this.itinerary.forEach(day => {
+        (day.segments || []).forEach(segment => {
+          const range = segment.attraction?.price_range
+          if (range && range.length) {
+            prices.push(range[1])
+          }
+        })
+      })
+      return prices.length ? Math.max(...prices) : 0
     }
   },
   async mounted() {
     try {
-      await this.loadUserPreferences();
+      await this.loadUserPreferences()
     } catch (error) {
-      console.error('Error during component initialization:', error);
-      this.error = 'Failed to initialize the page. Please try refreshing.';
+      console.error('Error during component initialization:', error)
+      this.error = 'Failed to initialize the page. Please try refreshing.'
     }
   },
-
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.map) {
-      this.map.remove();
-      this.map = null;
+      this.map.remove()
+      this.map = null
     }
   },
   methods: {
     toggleAdvanced() {
-      this.showAdvanced = !this.showAdvanced;
+      this.showAdvanced = !this.showAdvanced
     },
 
     validateDuration() {
-      this.durationWarning = '';
-      const duration = this.preferences.duration;
-      
+      this.durationWarning = ''
+      const duration = this.preferences.duration
       if (duration > 14) {
-        this.durationWarning = 'Consider exploring multiple destinations for longer trips, or expand your travel radius for more options.';
+        this.durationWarning = 'Consider exploring multiple destinations for longer trips, or expand your travel radius for more options.'
       } else if (duration > 7) {
-        this.durationWarning = 'For extended stays, you might want to increase your travel distance to discover more attractions.';
+        this.durationWarning = 'For extended stays, you might want to increase your travel distance to discover more attractions.'
       }
     },
 
     async getRecommendations() {
       try {
-        this.loading = true;
-        this.error = null;
-        this.recommendations = [];
-        this.itinerary = [];
+        this.loading = true
+        this.error = null
+        this.recommendations = []
+        this.itinerary = []
+        this.summary = null
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-        // Calculate attractions per day (minimum 2, maximum 4)
-        const attractionsPerDay = Math.min(Math.max(Math.floor(10 / this.preferences.duration), 2), 4);
-        const totalAttractions = attractionsPerDay * this.preferences.duration;
-
-        const requestBody = {
+        const payload = {
           user_id: this.getUserId(),
           preferences: {
             activity_types: this.preferences.activity_types,
@@ -440,132 +412,36 @@ export default {
             lng: this.location.lng,
             address: this.location.address
           },
-          top_k: Math.max(totalAttractions, 8)
-        };
-
-        console.log('Sending request:', requestBody);
-        
-        const response = await fetch(`${API_BASE_URL}/api/recommendations`, {
-          signal: controller.signal,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(requestBody)
-        });
-
-        clearTimeout(timeoutId);
-
-        let data;
-        try {
-          data = await response.json();
-          console.log('Received response:', data);
-        } catch (error) {
-          console.error('Failed to parse response:', error);
-          throw new Error('Invalid server response');
+          top_k: Math.max(this.preferences.duration * 3, 8),
+          exclude_visited: [],
+          save: this.isLoggedIn
         }
 
-        if (!response.ok) {
-          throw new Error(data.detail || 'Failed to get recommendations');
+        const response = await itineraryAPI.plan(payload)
+        const data = response.data ?? response
+
+        this.recommendations = data.recommendations || []
+        this.itinerary = data.days || []
+        this.summary = data.summary || null
+        this.weatherInfo = data.weather || null
+
+        if (!this.itinerary.length) {
+          const contextMessage = typeof data.context === 'string'
+            ? data.context
+            : (data.context && data.context.message)
+          this.error = contextMessage || 'No itinerary could be generated with the current preferences.'
         }
-
-        if (!data.recommendations || !Array.isArray(data.recommendations)) {
-          console.error('Invalid response format:', data);
-          throw new Error('Invalid response format from server');
-        }
-
-        this.recommendations = data.recommendations.map(rec => ({
-          id: rec.id || rec.attraction_id,
-          name: rec.name,
-          description: rec.description || '',
-          category: rec.category || rec.categories?.[0] || 'general',
-          rating: rec.rating || 4.0,
-          confidence_score: rec.confidence_score || 0.5,
-          price_range: rec.price_range || [0, 100],
-          location: rec.location || { lat: this.location.lat, lng: this.location.lng },
-          reasons: rec.reasons || ['Based on your preferences'],
-          distance: rec.distance,
-          estimated_time: rec.estimated_time || '2-3 hours'
-        }));
-
-        if (this.recommendations.length === 0) {
-          this.error = 'No recommendations found within your travel distance. Try increasing your travel radius in More Options.';
-        } else {
-          // Generate itinerary
-          this.generateItinerary();
-          // Get weather information
-          await this.getWeatherInfo();
-        }
-
       } catch (err) {
-        console.error('Recommendation error:', err);
-        if (err.name === 'AbortError') {
-          this.error = 'Request timed out. Please try again.';
-        } else {
-          this.error = err.message || 'Failed to get recommendations. Please try again.';
-        }
-        this.recommendations = [];
+        console.error('Itinerary planning error:', err)
+        const detail = err?.response?.data?.detail
+        this.error = detail || err.message || 'Failed to plan itinerary. Please try again.'
       } finally {
-        this.loading = false;
-        
-        if (this.recommendations.length > 0) {
-          await this.$nextTick();
-          await this.initMap();
+        this.loading = false
+        if (this.itinerary.length) {
+          await this.$nextTick()
+          await this.initMap()
         }
       }
-    },
-
-    generateItinerary() {
-      const duration = this.preferences.duration;
-      const attractions = [...this.recommendations];
-      
-      // Sort attractions by rating and confidence score
-      attractions.sort((a, b) => (b.rating * b.confidence_score) - (a.rating * a.confidence_score));
-      
-      // Calculate attractions per day
-      const attractionsPerDay = Math.max(Math.floor(attractions.length / duration), 1);
-      const extraAttractions = attractions.length % duration;
-      
-      this.itinerary = [];
-      let currentIndex = 0;
-      
-      for (let day = 0; day < duration; day++) {
-        const dayAttractions = attractionsPerDay + (day < extraAttractions ? 1 : 0);
-        const dayItems = attractions.slice(currentIndex, currentIndex + dayAttractions);
-        
-        // Only add days that have attractions
-        if (dayItems.length > 0) {
-          this.itinerary.push({
-            day: day + 1,
-            attractions: dayItems
-          });
-        }
-        
-        currentIndex += dayAttractions;
-      }
-    },
-
-    async getWeatherInfo() {
-      // Simulate weather data (in real app, you would call a weather API)
-      const weatherConditions = ['sunny', 'cloudy', 'partly-cloudy', 'rainy'];
-      const randomCondition = weatherConditions[Math.floor(Math.random() * weatherConditions.length)];
-      
-      // Simulate temperature based on location (New Zealand typical range)
-      let baseTemp = 18;
-      if (this.location.address.includes('Wellington')) baseTemp = 16;
-      if (this.location.address.includes('Auckland')) baseTemp = 20;
-      if (this.location.address.includes('Christchurch')) baseTemp = 15;
-      if (this.location.address.includes('Hamilton')) baseTemp = 18;
-      
-      const temperature = baseTemp + Math.floor(Math.random() * 8) - 4; // Âç§4 degrees variation
-      
-      this.weatherInfo = {
-        condition: randomCondition,
-        temperature: temperature,
-        suitable_for_outdoor: temperature > 10 && randomCondition !== 'rainy',
-        location: this.location.address
-      };
     },
 
     async savePreferences() {
@@ -596,120 +472,116 @@ export default {
       }
     },
 
-
-
     async initMap() {
+      if (!this.itinerary.length) {
+        return
+      }
+
       if (this.map) {
-        this.map.remove();
-        this.map = null;
-        this.mapInitialized = false;
+        this.map.remove()
+        this.map = null
+        this.mapInitialized = false
       }
 
-      if (!this.recommendations || this.recommendations.length === 0) {
-        return;
+      const mapElement = document.getElementById('map')
+      if (!mapElement) {
+        console.warn('Map container not found')
+        return
       }
 
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        await this.$nextTick();
-        await new Promise(resolve => setTimeout(resolve, attempt * 200));
+      const centerLat = Number(this.location?.lat) || -41.3
+      const centerLng = Number(this.location?.lng) || 174.8
 
-        const mapContainer = this.$refs.mapContainer;
-        if (!mapContainer || mapContainer.offsetWidth === 0) {
-          if (attempt === 3) return;
-          continue;
-        }
+      this.map = L.map(mapElement, {
+        center: [centerLat, centerLng],
+        zoom: 8,
+        attributionControl: true
+      })
 
-        try {
-          const centerLat = Number(this.location?.lat) || -41.3;
-          const centerLng = Number(this.location?.lng) || 174.8;
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(this.map)
 
-          this.map = L.map(mapContainer, {
-            center: [centerLat, centerLng],
-            zoom: 8,
-            attributionControl: true
-          });
+      const bounds = L.latLngBounds()
+      bounds.extend([centerLat, centerLng])
 
-          L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: 'Êºè OpenStreetMap contributors',
-            maxZoom: 19
-          }).addTo(this.map);
+      const colors = ['#d62828', '#1d3557', '#2a9d8f', '#f4a261', '#6a4c93', '#457b9d', '#ffb703']
 
-          // Add destination marker
-          const destinationMarker = L.marker([centerLat, centerLng], {
-            title: 'Your Destination'
-          }).addTo(this.map);
-          destinationMarker.bindPopup('<strong>Your Destination</strong><br>' + this.location.address);
+      this.itinerary.forEach(day => {
+        const dayColor = colors[(day.day_index - 1) % colors.length]
+        const polylinePoints = []
 
-          // Add attraction markers
-          const bounds = L.latLngBounds();
-          bounds.extend([centerLat, centerLng]);
-
-          this.recommendations.forEach((rec, index) => {
-            if (rec.location?.lat && rec.location?.lng) {
-              const lat = Number(rec.location.lat);
-              const lng = Number(rec.location.lng);
-              
-              if (!isNaN(lat) && !isNaN(lng)) {
-                // Different color for different days in itinerary
-                const dayIndex = this.getAttractionDay(rec.id);
-                const colors = ['red', 'blue', 'green', 'orange', 'purple', 'darkred', 'lightred'];
-                const color = colors[dayIndex % colors.length] || 'gray';
-                
-                const marker = L.marker([lat, lng], {
-                  title: rec.name,
-                  icon: L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div style="background-color:${color};color:white;border-radius:50%;width:25px;height:25px;text-align:center;line-height:25px;font-size:12px;font-weight:bold;">${dayIndex + 1}</div>`,
-                    iconSize: [25, 25],
-                    iconAnchor: [12, 12]
-                  })
-                }).addTo(this.map);
-
-                marker.bindPopup(`
-                  <strong>${rec.name}</strong><br>
-                  ${rec.description || ''}<br>
-                  Rating: ${rec.rating}<br>
-                  Day: ${dayIndex + 1}
-                `);
-
-                bounds.extend([lat, lng]);
-              }
-            }
-          });
-
-          if (bounds.isValid()) {
-            this.map.fitBounds(bounds, { padding: [20, 20] });
+        ;(day.segments || []).forEach(segment => {
+          const location = segment.attraction?.location || {}
+          const lat = Number(location.lat)
+          const lng = Number(location.lng)
+          if (Number.isNaN(lat) || Number.isNaN(lng)) {
+            return
           }
 
-          this.map.invalidateSize();
-          this.mapInitialized = true;
-          return;
+          polylinePoints.push([lat, lng])
+          bounds.extend([lat, lng])
 
-        } catch (error) {
-          console.error(`Error initializing map on attempt ${attempt}:`, error);
-          if (this.map) {
-            this.map.remove();
-            this.map = null;
-          }
+          const marker = L.marker([lat, lng], {
+            title: segment.attraction.name,
+            icon: L.divIcon({
+              className: 'custom-div-icon',
+              html: `<div style="background-color:${dayColor};color:white;border-radius:50%;width:28px;height:28px;text-align:center;line-height:28px;font-size:12px;font-weight:bold;">${day.day_index}</div>`,
+              iconSize: [28, 28],
+              iconAnchor: [14, 14]
+            })
+          }).addTo(this.map)
+
+          const travelInfo = segment.travel && segment.travel.distance_km != null
+            ? `Travel: ${segment.travel.distance_km} km - ${segment.travel.duration_minutes} min<br>`
+            : ''
+
+          marker.bindPopup(`
+            <strong>${segment.attraction.name}</strong><br>
+            Arrival: ${this.formatTime(segment.arrival_time)}<br>
+            ${travelInfo}
+            ${segment.attraction.description || ''}
+          `)
+        })
+
+        if (polylinePoints.length > 1) {
+          L.polyline(polylinePoints, { color: dayColor, weight: 3, opacity: 0.7 }).addTo(this.map)
         }
+      })
+
+      if (bounds.isValid()) {
+        this.map.fitBounds(bounds, { padding: [20, 20] })
       }
+
+      this.map.invalidateSize()
+      this.mapInitialized = true
     },
 
-    getAttractionDay(attractionId) {
-      for (let i = 0; i < this.itinerary.length; i++) {
-        const day = this.itinerary[i];
-        if (day.attractions.some(a => a.id === attractionId)) {
-          return i;
-        }
+    formatDate(dateString) {
+      if (!dateString) return ''
+      const date = new Date(dateString)
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    },
+
+    formatTime(dateString) {
+      if (!dateString) return ''
+      const date = new Date(dateString)
+      return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    },
+
+    formatTravel(travel) {
+      if (!travel || travel.distance_km == null) {
+        return '°™'
       }
-      return 0;
+      return `${travel.distance_km} km - ${travel.duration_minutes} min`
     },
 
     updateLocation() {
-      const selectedLocation = this.locations[this.location.address];
+      const selectedLocation = this.locations[this.location.address]
       if (selectedLocation) {
-        this.location.lat = selectedLocation.lat;
-        this.location.lng = selectedLocation.lng;
+        this.location.lat = selectedLocation.lat
+        this.location.lng = selectedLocation.lng
       }
     },
 
@@ -724,6 +596,7 @@ export default {
   }
 }
 </script>
+
 
 <style scoped>
 .card {
@@ -748,6 +621,24 @@ export default {
   border: none;
 }
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
