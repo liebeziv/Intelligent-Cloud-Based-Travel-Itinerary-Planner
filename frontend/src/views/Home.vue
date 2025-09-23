@@ -117,6 +117,9 @@
             <button v-if="isLoggedIn" @click="savePreferences" type="button" class="btn btn-outline-secondary btn-sm ms-2">
               Save Preferences
             </button>
+            <button v-if="isLoggedIn && itinerary.length" @click="saveCurrentTrip" type="button" class="btn btn-success btn-sm ms-2">
+              Save Trip
+            </button>
           </div>
         </form>
       </div>
@@ -568,6 +571,22 @@ export default {
     async savePreferences() {
       localStorage.setItem('userPreferences', JSON.stringify(this.preferences))
       alert('Preferences saved!')
+    },
+
+    saveCurrentTrip() {
+      const userId = this.getUserId()
+      const key = `trips_${userId}`
+      const existing = localStorage.getItem(key)
+      const trips = existing ? JSON.parse(existing) : []
+      const trip = {
+        id: `trip_${Date.now()}`,
+        created_at: new Date().toISOString(),
+        preferences: { ...this.preferences },
+        location: { ...this.location }
+      }
+      trips.unshift(trip)
+      localStorage.setItem(key, JSON.stringify(trips))
+      alert('Trip saved! View it on your user page.')
     },
 
     async loadUserPreferences() {
