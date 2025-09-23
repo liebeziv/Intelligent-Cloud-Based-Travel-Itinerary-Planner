@@ -83,7 +83,7 @@ export default {
       }
 
       try {
-        const response = await fetch("Travelplan.us-east-1.elasticbeanstalk.com/api/auth/register", {
+        const response = await fetch("https://aitravelplan.site/api/auth/register", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"

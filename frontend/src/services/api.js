@@ -1,7 +1,7 @@
-﻿import axios from 'axios'
+import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://travelplan.us-east-1.elasticbeanstalk.com',
+  baseURL: import.meta.env.VITE_API_URL || 'https://aitravelplan.site',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -40,7 +40,8 @@ export const attractionsAPI = {
 
 export const itineraryAPI = {
   create: (data) => api.post('/api/itineraries', data),
-  getByUser: (userId) => api.get(`/api/itineraries/user/${userId}`)
+  getByUser: (userId) => api.get(`/api/itineraries/user/${userId}`),
+  plan: (payload) => api.post('/api/itineraries/plan', payload)
 }
 
 export default api

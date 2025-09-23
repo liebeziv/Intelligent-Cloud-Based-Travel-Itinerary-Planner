@@ -1,6 +1,6 @@
-﻿// frontend/src/api/config.js
+// frontend/src/api/config.js
 // Prefer environment-provided API base, fallback to a placeholder (please override via VITE_API_URL)
-const API_BASE_URL = 'https://travelplan.us-east-1.elasticbeanstalk.com';
+const API_BASE_URL = 'https://aitravelplan.site';
 
 export const apiConfig = {
   baseURL: API_BASE_URL,
