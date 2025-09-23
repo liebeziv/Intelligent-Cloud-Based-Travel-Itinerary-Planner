@@ -117,6 +117,9 @@
             <button v-if="isLoggedIn" @click="savePreferences" type="button" class="btn btn-outline-secondary btn-sm ms-2">
               Save Preferences
             </button>
+            <button v-if="isLoggedIn && itinerary.length" @click="saveCurrentTrip" type="button" class="btn btn-success btn-sm ms-2">
+              Save Trip
+            </button>
           </div>
         </form>
       </div>
@@ -222,7 +225,7 @@
               
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="badge bg-primary">{{ rec.category }}</span>
-                <span class="badge bg-warning text-dark">‚ò?{{ rec.rating }}</span>
+                <span class="badge bg-warning text-dark">‚≠ê{{ rec.rating }}</span>
               </div>
 
               <div class="small text-muted mb-2">
@@ -249,7 +252,7 @@
               <p class="card-text small">{{ attraction.description }}</p>
               <div>
                 <span class="badge bg-primary me-1">{{ attraction.category }}</span>
-                <span class="badge bg-warning text-dark">‚ò?{{ attraction.rating }}</span>
+                <span class="badge bg-warning text-dark">‚≠ê‚≠ê{{ attraction.rating }}</span>
               </div>
             </div>
           </div>
@@ -446,6 +449,22 @@ export default {
       alert('Preferences saved!')
     },
 
+    saveCurrentTrip() {
+      const userId = this.getUserId()
+      const key = `trips_${userId}`
+      const existing = localStorage.getItem(key)
+      const trips = existing ? JSON.parse(existing) : []
+      const trip = {
+        id: `trip_${Date.now()}`,
+        created_at: new Date().toISOString(),
+        preferences: { ...this.preferences },
+        location: { ...this.location }
+      }
+      trips.unshift(trip)
+      localStorage.setItem(key, JSON.stringify(trips))
+      alert('Trip saved! View it on your user page.')
+    },
+
     async loadUserPreferences() {
       const saved = localStorage.getItem('userPreferences')
       if (saved) {
@@ -553,7 +572,7 @@ export default {
 
     formatTravel(travel) {
       if (!travel || travel.distance_km == null) {
-        return '°™'
+        return '‚≠ê'
       }
       return `${travel.distance_km} km - ${travel.duration_minutes} min`
     },

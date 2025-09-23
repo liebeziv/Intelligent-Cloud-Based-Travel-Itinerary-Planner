@@ -9,7 +9,7 @@
 * `trip-planner-iam-users` (creates our 6 IAM users & group)
 * `trip-planner-team-roles` (creates 5 reusable roles)
 
-## ⚠️ Quick Start Notice
+##  Quick Start Notice
 
 **For most operations, use AWS CLI or CloudShell instead of the Console:**
 - **Console**: Good for viewing and monitoring resources
@@ -91,8 +91,7 @@ aws s3 cp file.txt s3://bucket-name/
 
 ### Detailed Role Permissions
 
-#### 🔧 BackendDeployer Role
-**Who should use:** Backend developers, DevOps engineers  
+####  BackendDeployer Role
 **Permissions:**
 - **CloudFormation**: Update/create/delete `trip-planner-backend` stack only
 - **DynamoDB**: Full access to `trip-planner-*` tables (create, read, update, delete)
@@ -100,14 +99,12 @@ aws s3 cp file.txt s3://bucket-name/
 - **CloudWatch Logs**: Read project logs (`/trip-planner/*`)
 - **IAM**: Pass role to EC2 service only
 
-#### 🎨 FrontendPublisher Role  
-**Who should use:** Frontend developers  
+####  FrontendPublisher Role   
 **Permissions:**
 - **S3**: List, upload, delete objects in `travel-planner-frontend-849354442724` bucket
 - **CloudFront**: Create invalidations for distribution `EIQO53JTN0IXU` only
 
-#### 👁️ Observer Role
-**Who should use:** Project managers, QA engineers, monitoring  
+####  Observer Role
 **Permissions:**
 - **CloudFormation**: Read-only access to all stacks
 - **CloudWatch**: Read-only access to metrics and logs
@@ -117,8 +114,7 @@ aws s3 cp file.txt s3://bucket-name/
 - **EC2**: Read-only access to project-tagged instances
 - **CloudWatch Logs**: Read project logs (`/trip-planner/*`)
 
-#### 🔐 SecretsAdmin Role
-**Who should use:** Cloud infrastructure engineers  
+#### SecretsAdmin Role
 **Permissions:**
 - **Secrets Manager**: Full access to `trip-planner/*` namespace only
   - Create, update, delete, rotate secrets
@@ -133,7 +129,6 @@ aws s3 cp file.txt s3://bucket-name/
 
 1. In the AWS Console, click your name (top-right) → **Switch role**.
 2. Account: `849354442724`, Role: e.g. `tp-BackendDeployer-849354442724`.
-3. (Optional) Pick a color label. Now you’re operating **as that role**.
 
 ### B) CLI via **CloudShell** (recommended, no access keys)
 
@@ -165,199 +160,6 @@ aws sts get-caller-identity
 
 ---
 
-## 4) Common tasks by role (quick recipes)
-
-### A) Observer — find key outputs & health
-
-```bash
-# Stack outputs (ALB URL, etc.)
-aws cloudformation describe-stacks \
-  --stack-name trip-planner-backend \
-  --region us-east-1 \
-  --query 'Stacks[0].Outputs' --output table
-
-# Target group health
-TG_ARN=$(aws cloudformation describe-stacks \
-  --stack-name trip-planner-backend --region us-east-1 \
-  --query "Stacks[0].Outputs[?OutputKey=='TargetGroupArn'].OutputValue" --output text)
-aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --region us-east-1
-
-# List DynamoDB tables
-aws dynamodb list-tables --region us-east-1
-
-# Check DynamoDB table details
-aws dynamodb describe-table --table-name trip-planner-users --region us-east-1
-
-# Tail backend logs
-aws logs tail /trip-planner/backend --follow --region us-east-1
-```
-
-### B) FrontendPublisher — publish static site
-
-```bash
-# Upload build artifacts (replace path if needed)
-FRONTEND_BUCKET="travel-planner-frontend-849354442724"
-aws s3 sync ./dist "s3://$FRONTEND_BUCKET" --delete
-
-# Invalidate CloudFront cache for all paths
-DIST_ID="EIQO53JTN0IXU"
-aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
-```
-
-### C) BackendDeployer — scale & deploy
-
-> Parameters you **don't** set will keep their previous values.
-
-**Scale up/down (ASG Desired=1):**
-
-```bash
-aws cloudformation deploy \
-  --stack-name trip-planner-backend \
-  --template-file ec2-alb.yaml \
-  --region us-east-1 \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides DesiredCapacity=1 MinSize=1 MaxSize=2
-```
-
-**Roll out a new container image (example):**
-
-```bash
-aws cloudformation deploy \
-  --stack-name trip-planner-backend \
-  --template-file ec2-alb.yaml \
-  --region us-east-1 \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides ContainerImage=docker.io/<namespace>/<image>:<tag>
-```
-
-**DynamoDB Management:**
-
-```bash
-# Create a new table
-aws dynamodb create-table \
-  --table-name trip-planner-attractions \
-  --attribute-definitions \
-    AttributeName=id,AttributeType=S \
-  --key-schema \
-    AttributeName=id,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region us-east-1
-
-# Add item to table
-aws dynamodb put-item \
-  --table-name trip-planner-attractions \
-  --item '{"id":{"S":"1"},"name":{"S":"Milford Sound"},"location":{"S":"Southland"}}' \
-  --region us-east-1
-
-# Query table
-aws dynamodb query \
-  --table-name trip-planner-attractions \
-  --key-condition-expression "id = :id" \
-  --expression-attribute-values '{":id":{"S":"1"}}' \
-  --region us-east-1
-```
-
-**Verify:**
-
-```bash
-# Health endpoint
-ALB=$(aws cloudformation describe-stacks \
-  --stack-name trip-planner-backend --region us-east-1 \
-  --query "Stacks[0].Outputs[?OutputKey=='AlbDNSName'].OutputValue" --output text)
-curl -i "http://$ALB/health"
-```
-
-### D) SecretsAdmin — manage app secrets (namespaced)
-
-```bash
-# Create or update a secret (namespace enforced by role)
-aws secretsmanager create-secret \
-  --name "trip-planner/jwt" \
-  --secret-string '{"SECRET_KEY":"<strong-random>","JWT_EXP_MINUTES":"480"}' \
-  --region us-east-1
-
-aws secretsmanager put-secret-value \
-  --secret-id "trip-planner/jwt" \
-  --secret-string '{"SECRET_KEY":"<rotated-value>","JWT_EXP_MINUTES":"480"}'
-```
-
----
-
-## 5) EC2 Instance Role & PassRole Usage
-
-### What is EC2 Instance Role?
-
-EC2 instances automatically get AWS permissions through **instance roles** - no hardcoded access keys needed! The `BackendDeployer` role can "pass" IAM roles to EC2 instances during deployment.
-
-### How PassRole Works
-
-1. **BackendDeployer** has `iam:PassRole` permission for the backend EC2 role
-2. When deploying/updating the backend stack, CloudFormation automatically:
-   - Creates/updates EC2 instances
-   - Attaches the `trip-planner-backend-role-849354442724` role to instances
-   - Instances get permissions to access DynamoDB, S3, Secrets Manager, etc.
-
-### Backend Application Usage
-
-Your FastAPI backend code can directly use AWS services without any configuration:
-
-```python
-# No AWS credentials needed - uses instance role automatically
-import boto3
-
-# DynamoDB access
-dynamodb = boto3.resource('dynamodb')
-users_table = dynamodb.Table('Users')
-
-# S3 access  
-s3_client = boto3.client('s3')
-
-# Secrets Manager access
-secrets_client = boto3.client('secretsmanager')
-```
-
-### Verify Instance Role
-
-```bash
-# Check if instance has the role (run on EC2)
-curl http://169.254.169.254/latest/meta-data/iam/security-credentials/
-# Should return: trip-planner-backend-role-849354442724
-
-# Check current AWS identity
-aws sts get-caller-identity
-# Should show the EC2 instance role, not your user role
-```
-
-### Why PassRole Permission?
-
-The `BackendDeployer` needs `iam:PassRole` to:
-- Deploy new backend versions
-- Scale up/down instances  
-- Update instance configurations
-- Ensure all instances get the correct permissions
-
----
-
-## 6) Safety, scope & hygiene
-
-* **Use the smallest role** Observer > FrontendPublisher/BackendDeployer > SecretsAdmin.
-* **MFA on your IAM user** is required.
-* **No hard-coded keys** in code or repos. The backend on EC2 uses the **instance role** automatically.
-* **Region** is `us-east-1`. If you see “not found” errors, double-check the region.
-* **Do not edit IAM/User/Role resources manually** unless you know the impact; we manage them via CloudFormation.
-
----
-
-## 7) Troubleshooting
-
-* **AccessDenied**: You assumed the wrong role for this action, or the resource (bucket/distribution/stack) isn’t the expected one. Switch role or ask the admin.
-* **ExpiredToken**: Your temporary session expired. Re-assume the role.
-* **ValidationError (CFN)**: Missing `--capabilities CAPABILITY_NAMED_IAM` when deploying stacks that touch IAM.
-* **404/ResourceNotFound**: Wrong stack name or region; confirm with `describe-stacks`.
-* **ALB unhealthy**: Backend container isn’t listening on the configured port/path. Check `/trip-planner/backend` logs.
-
----
-
 ### Need to know your current identity?
 
 ```bash
@@ -365,4 +167,3 @@ aws sts get-caller-identity
 # Confirm the Account is 849354442724 and the Arn contains the role you intended to assume
 ```
 
-If you're unsure **which role** to use for a task, start with **Observer**, then escalate to **FrontendPublisher** or **BackendDeployer** as needed; use **SecretsAdmin** only for credential management.

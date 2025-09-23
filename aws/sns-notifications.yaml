@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SNS Topics for Trip Planner - Notifications, Alerts, and System Messages.
+
+Parameters:
+  NotificationEmail:
+    Type: String
+    Default: "sc1040@students.waikato.ac.nz"
+    Description: Email address for receiving notifications
+    AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+  
+  AlertEmail:
+    Type: String
+    Default: "sc1040@students.waikato.ac.nz"
+    Description: Email address for receiving system alerts
+    AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+
+Resources:
+  # Main Notifications
+  NotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "trip-planner-notifications-${AWS::AccountId}"
+      DisplayName: "Trip Planner Notifications"
+      Description: "Notifications for itinerary changes, weather alerts, and user updates"
+      Tags:
+        - Key: Project
+          Value: trip-planner
+        - Key: Service
+          Value: notifications
+        - Key: Environment
+          Value: production
+
+  # System Alerts
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "trip-planner-alerts-${AWS::AccountId}"
+      DisplayName: "Trip Planner System Alerts"
+      Description: "System alerts for errors, performance issues, and security events"
+      Tags:
+        - Key: Project
+          Value: trip-planner
+        - Key: Service
+          Value: alerts
+        - Key: Environment
+          Value: production
+
+  # Weather Updates
+  WeatherTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "trip-planner-weather-${AWS::AccountId}"
+      DisplayName: "Trip Planner Weather Updates"
+      Description: "Weather alerts and updates for travel planning"
+      Tags:
+        - Key: Project
+          Value: trip-planner
+        - Key: Service
+          Value: weather
+        - Key: Environment
+          Value: production
+
+  # Email Subscriptions
+  NotificationEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref NotificationsTopic
+      Endpoint: !Ref NotificationEmail
+
+  AlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref AlertsTopic
+      Endpoint: !Ref AlertEmail
+
+  WeatherEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref WeatherTopic
+      Endpoint: !Ref NotificationEmail
+
+  # CloudWatch Alarms Integration
+  CloudWatchAlarmsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "trip-planner-cloudwatch-alarms-${AWS::AccountId}"
+      DisplayName: "Trip Planner CloudWatch Alarms"
+      Description: "CloudWatch alarms and monitoring alerts"
+      Tags:
+        - Key: Project
+          Value: trip-planner
+        - Key: Service
+          Value: monitoring
+        - Key: Environment
+          Value: production
+
+  CloudWatchAlarmsEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref CloudWatchAlarmsTopic
+      Endpoint: !Ref AlertEmail
+
+  # IAM Policy for SNS Publishing
+  SNSPublishPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "trip-planner-sns-publish-${AWS::AccountId}"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sns:Publish
+              - sns:GetTopicAttributes
+            Resource:
+              - !Ref NotificationsTopic
+              - !Ref AlertsTopic
+              - !Ref WeatherTopic
+              - !Ref CloudWatchAlarmsTopic
+      Roles:
+        - !Sub "trip-planner-backend-role-${AWS::AccountId}"
+
+
+Outputs:
+  NotificationsTopicArn:
+    Description: ARN of the main notifications topic
+    Value: !Ref NotificationsTopic
+    Export:
+      Name: trip-planner-notifications-topic-arn
+
+  AlertsTopicArn:
+    Description: ARN of the system alerts topic
+    Value: !Ref AlertsTopic
+    Export:
+      Name: trip-planner-alerts-topic-arn
+
+  WeatherTopicArn:
+    Description: ARN of the weather updates topic
+    Value: !Ref WeatherTopic
+    Export:
+      Name: trip-planner-weather-topic-arn
+
+  CloudWatchAlarmsTopicArn:
+    Description: ARN of the CloudWatch alarms topic
+    Value: !Ref CloudWatchAlarmsTopic
+    Export:
+      Name: trip-planner-cloudwatch-alarms-topic-arn
