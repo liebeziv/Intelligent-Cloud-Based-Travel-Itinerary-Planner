@@ -274,6 +274,22 @@ def health_check():
     logger.info(f"Health check result: {health_status}")
     return health_status
 
+# Recommended route registration (real route takes precedence, falls back to stub if failed)
+try:
+    from app.api.routes.recommendations import router as recommendations_router
+    app.include_router(recommendations_router)
+    logger.info("Recommendations router registered (real).")
+except Exception as e:
+    logger.warning(
+        "Real recommendations router unavailable: %s; falling back to stub.", e
+    )
+    from app.api.routes.recommendations_stub import (  # type: ignore
+        router as recommendations_stub_router,
+    )
+
+    app.include_router(recommendations_stub_router)
+    logger.info("Recommendations router registered (stub).")
+
 
 @app.get("/api/logs")
 def get_logs():
