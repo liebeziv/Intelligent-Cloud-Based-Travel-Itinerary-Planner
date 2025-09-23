@@ -59,6 +59,7 @@
 </template>
 
 <script>
+import { authAPI } from '../services/api.js'
 export default {
   name: 'Register',
   data() {
@@ -83,28 +84,19 @@ export default {
       }
 
       try {
-        const response = await fetch("Travelplan.us-east-1.elasticbeanstalk.com/api/auth/register", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            name: this.name,
-            email: this.email,
-            password: this.password
-          })
-        });
-
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.detail || "Registration failed");
-        }
-
+        await authAPI.register({
+          name: this.name,
+          email: this.email,
+          password: this.password
+        })
         alert("Registration successful! Please login.");
         this.$router.push("/login");
-
       } catch (error) {
-        alert("Error: " + error.message);
+        const msg = error.response?.data?.detail
+          || error.response?.data?.message
+          || error.message
+          || 'Registration failed';
+        alert(msg);
       }
     }
   }
