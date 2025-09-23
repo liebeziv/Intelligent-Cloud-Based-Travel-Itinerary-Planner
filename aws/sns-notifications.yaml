@@ -4,13 +4,13 @@ Description: SNS Topics for Trip Planner - Notifications, Alerts, and System Mes
 Parameters:
   NotificationEmail:
     Type: String
-    Default: "sc1040@students.waikato.ac.nz"
+    Default: "zc199@students.waikato.ac.nz"
     Description: Email address for receiving notifications
     AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
   
   AlertEmail:
     Type: String
-    Default: "sc1040@students.waikato.ac.nz"
+    Default: "zc199@students.waikato.ac.nz"
     Description: Email address for receiving system alerts
     AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
 
@@ -21,7 +21,6 @@ Resources:
     Properties:
       TopicName: !Sub "trip-planner-notifications-${AWS::AccountId}"
       DisplayName: "Trip Planner Notifications"
-      Description: "Notifications for itinerary changes, weather alerts, and user updates"
       Tags:
         - Key: Project
           Value: trip-planner
@@ -36,7 +35,6 @@ Resources:
     Properties:
       TopicName: !Sub "trip-planner-alerts-${AWS::AccountId}"
       DisplayName: "Trip Planner System Alerts"
-      Description: "System alerts for errors, performance issues, and security events"
       Tags:
         - Key: Project
           Value: trip-planner
@@ -51,7 +49,6 @@ Resources:
     Properties:
       TopicName: !Sub "trip-planner-weather-${AWS::AccountId}"
       DisplayName: "Trip Planner Weather Updates"
-      Description: "Weather alerts and updates for travel planning"
       Tags:
         - Key: Project
           Value: trip-planner
@@ -88,7 +85,6 @@ Resources:
     Properties:
       TopicName: !Sub "trip-planner-cloudwatch-alarms-${AWS::AccountId}"
       DisplayName: "Trip Planner CloudWatch Alarms"
-      Description: "CloudWatch alarms and monitoring alerts"
       Tags:
         - Key: Project
           Value: trip-planner
@@ -122,7 +118,7 @@ Resources:
               - !Ref WeatherTopic
               - !Ref CloudWatchAlarmsTopic
       Roles:
-        - !Sub "trip-planner-backend-role-${AWS::AccountId}"
+        - !Sub "trip-planner-backend-role-v5-${AWS::AccountId}"
 
 
 Outputs:

@@ -13,11 +13,11 @@ Parameters:
     Description: CloudFormation stack name for the backend.
   BackendInstanceRoleName:
     Type: String
-    Default: "trip-planner-backend-role-849354442724"
+    Default: "trip-planner-backend-role-v5-849354442724"
     Description: EC2 instance role name used by the backend (for iam:PassRole constraint).
   FrontendBucketName:
     Type: String
-    Default: "travel-planner-frontend-849354442724"
+    Default: "travel-planner-frontend-849354442724-lz"
     Description: S3 bucket used to host frontend artifacts.
   FrontendDistributionId:
     Type: String
@@ -194,8 +194,8 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${FrontendBucketName}"
                   - !Sub "arn:aws:s3:::${FrontendBucketName}/*"
-                  - !Sub "arn:aws:s3:::travel-planner-assets*"
-                  - !Sub "arn:aws:s3:::travel-planner-assets*/*"
+                  - !Sub "arn:aws:s3:::travel-planner-assets-${AWS::AccountId}-lz"
+                  - !Sub "arn:aws:s3:::travel-planner-assets-${AWS::AccountId}-lz/*"
               # SNS read access for project topics
               - Effect: Allow
                 Action: [ "sns:ListTopics", "sns:GetTopicAttributes", "sns:ListSubscriptionsByTopic" ]

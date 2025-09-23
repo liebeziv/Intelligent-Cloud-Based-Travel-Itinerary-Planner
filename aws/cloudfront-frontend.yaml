@@ -26,7 +26,7 @@ Resources:
         IPV6Enabled: true
         Origins:
           - Id: s3-frontend-origin
-            DomainName: !Sub "travel-planner-frontend-${AWS::AccountId}.s3.${AWS::Region}.amazonaws.com"
+            DomainName: !Sub "travel-planner-frontend-${AWS::AccountId}-lz.s3.${AWS::Region}.amazonaws.com"
             S3OriginConfig: {}                  # OAC
             OriginAccessControlId: !Ref FrontendOAC
         DefaultCacheBehavior:
