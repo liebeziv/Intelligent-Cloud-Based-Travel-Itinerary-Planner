@@ -27,6 +27,13 @@
             <button class="btn btn-sm btn-outline-danger" v-if="trips.length" @click="clearTrips">Clear All</button>
           </div>
           <div class="card-body">
+            <div v-if="loading" class="text-center text-muted py-3">
+            <div class="spinner-border spinner-border-sm" role="status"></div>
+            <span class="ms-2">Loading trips...</span>
+          </div>
+
+          <div v-else>
+            <div v-if="error" class="alert alert-warning p-2">{{ error }}</div>
             <div v-if="!trips.length" class="text-muted">No trips saved yet. Plan a trip and click Save Trip.</div>
 
             <div class="accordion" id="tripsAccordion" v-else>
@@ -85,14 +92,21 @@
 </template>
 
 <script>
+import { itineraryAPI } from '../services/api'
 export default {
   name: 'User',
   data() {
     return {
-      trips: []
+      trips: [],
+      loading: false,
+      error: null
     }
   },
   computed: {
+    isLoggedIn() {
+      const token = localStorage.getItem('token')
+      return !!token
+    },
     userName() {
       return localStorage.getItem('userName') || ''
     },
@@ -108,32 +122,72 @@ export default {
     }
   },
   mounted() {
-    this.loadTrips()
+    this.refreshTrips()
   },
   methods: {
     storageKey() {
       return `trips_${this.userId}`
     },
-    loadTrips() {
+    async refreshTrips() {
+      this.loading = true
+      this.error = null
+      try {
+        if (this.isLoggedIn) {
+          const response = await itineraryAPI.getMine()
+          this.trips = Array.isArray(response.data) ? response.data : []
+        } else {
+          this.trips = this.loadTripsFromLocal()
+        }
+      } catch (error) {
+        console.error('Failed to load trips', error)
+        this.error = 'Unable to load trips from the server.'
+        this.trips = this.loadTripsFromLocal()
+      } finally {
+        this.loading = false
+      }
+    },
+
+    loadTripsFromLocal() {
       try {
         const raw = localStorage.getItem(this.storageKey())
-        this.trips = raw ? JSON.parse(raw) : []
+        return raw ? JSON.parse(raw) : []
       } catch (e) {
-        this.trips = []
+        return []
       }
     },
     saveTrips() {
       localStorage.setItem(this.storageKey(), JSON.stringify(this.trips))
     },
-    deleteTrip(id) {
+    async deleteTrip(id) {
+      if (this.isLoggedIn) {
+        try {
+          await itineraryAPI.remove(id)
+          await this.refreshTrips()
+        } catch (error) {
+          console.error('Failed to delete itinerary', error)
+          alert('Failed to delete the trip from the server. Please try again later.')
+        }
+        return
+      }
       this.trips = this.trips.filter(t => t.id !== id)
       this.saveTrips()
     },
-    clearTrips() {
-      if (confirm('Delete all saved trips?')) {
-        this.trips = []
-        this.saveTrips()
+    async clearTrips() {
+      if (!confirm('Delete all saved trips?')) {
+        return
       }
+      if (this.isLoggedIn) {
+        try {
+          await itineraryAPI.clear()
+          await this.refreshTrips()
+        } catch (error) {
+          console.error('Failed to clear itineraries', error)
+          alert('Failed to clear trips on the server. Please try again later.')
+        }
+        return
+      }
+      this.trips = []
+      this.saveTrips()
     },
     reopenTrip(trip) {
       // Store selected trip preferences and navigate home

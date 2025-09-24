@@ -1,7 +1,7 @@
-import axios from 'axios'
+﻿import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://aitravelplan.site',
+  baseURL: import.meta.env.VITE_API_URL || 'https://api.aitravelplan.site',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -40,7 +40,10 @@ export const attractionsAPI = {
 
 export const itineraryAPI = {
   create: (data) => api.post('/api/itineraries', data),
+  getMine: () => api.get('/api/itineraries/me'),
   getByUser: (userId) => api.get(`/api/itineraries/user/${userId}`),
+  remove: (itineraryId) => api.delete(`/api/itineraries/${itineraryId}`),
+  clear: () => api.delete('/api/itineraries'),
   plan: (payload) => api.post('/api/itineraries/plan', payload)
 }
 

@@ -1,0 +1,123 @@
+{
+    "CallerReference":  "4ae6cd66-69e9-0e41-fdcc-041ac869d672",
+    "Aliases":  {
+                    "Quantity":  1,
+                    "Items":  [
+                                  "aitravelplan.site"
+                              ]
+                },
+    "DefaultRootObject":  "index.html",
+    "Origins":  {
+                    "Quantity":  1,
+                    "Items":  [
+                                  {
+                                      "Id":  "s3-frontend-origin",
+                                      "DomainName":  "travel-planner-frontend-849354442724-lz.s3.us-east-1.amazonaws.com",
+                                      "OriginPath":  "",
+                                      "CustomHeaders":  {
+                                                            "Quantity":  0
+                                                        },
+                                      "S3OriginConfig":  {
+                                                             "OriginAccessIdentity":  "",
+                                                             "OriginReadTimeout":  30
+                                                         },
+                                      "ConnectionAttempts":  3,
+                                      "ConnectionTimeout":  10,
+                                      "OriginShield":  {
+                                                           "Enabled":  false
+                                                       },
+                                      "OriginAccessControlId":  "E3GHJ5JJYJK9N2"
+                                  }
+                              ]
+                },
+    "OriginGroups":  {
+                         "Quantity":  0
+                     },
+    "DefaultCacheBehavior":  {
+                                 "TargetOriginId":  "s3-frontend-origin",
+                                 "TrustedSigners":  {
+                                                        "Enabled":  false,
+                                                        "Quantity":  0
+                                                    },
+                                 "TrustedKeyGroups":  {
+                                                          "Enabled":  false,
+                                                          "Quantity":  0
+                                                      },
+                                 "ViewerProtocolPolicy":  "redirect-to-https",
+                                 "AllowedMethods":  {
+                                                        "Quantity":  3,
+                                                        "Items":  [
+                                                                      "HEAD",
+                                                                      "GET",
+                                                                      "OPTIONS"
+                                                                  ],
+                                                        "CachedMethods":  {
+                                                                              "Quantity":  2,
+                                                                              "Items":  [
+                                                                                            "HEAD",
+                                                                                            "GET"
+                                                                                        ]
+                                                                          }
+                                                    },
+                                 "SmoothStreaming":  false,
+                                 "Compress":  false,
+                                 "LambdaFunctionAssociations":  {
+                                                                    "Quantity":  0
+                                                                },
+                                 "FunctionAssociations":  {
+                                                              "Quantity":  0
+                                                          },
+                                 "FieldLevelEncryptionId":  "",
+                                 "CachePolicyId":  "658327ea-f89d-4fab-a63d-7e88639e58f6",
+                                 "GrpcConfig":  {
+                                                    "Enabled":  false
+                                                }
+                             },
+    "CacheBehaviors":  {
+                           "Quantity":  0
+                       },
+    "CustomErrorResponses":  {
+                                 "Quantity":  2,
+                                 "Items":  [
+                                               {
+                                                   "ErrorCode":  403,
+                                                   "ResponsePagePath":  "/index.html",
+                                                   "ResponseCode":  "200",
+                                                   "ErrorCachingMinTTL":  300
+                                               },
+                                               {
+                                                   "ErrorCode":  404,
+                                                   "ResponsePagePath":  "/index.html",
+                                                   "ResponseCode":  "200",
+                                                   "ErrorCachingMinTTL":  300
+                                               }
+                                           ]
+                             },
+    "Comment":  "Trip Planner Frontend (OAC to S3 private)",
+    "Logging":  {
+                    "Enabled":  false,
+                    "IncludeCookies":  false,
+                    "Bucket":  "",
+                    "Prefix":  ""
+                },
+    "PriceClass":  "PriceClass_All",
+    "Enabled":  true,
+    "ViewerCertificate":  {
+                              "MinimumProtocolVersion":  "TLSv1.2_2021",
+                              "Certificate":  "arn:aws:acm:us-east-1:849354442724:certificate/d52b767a-58fb-4b2c-9146-4fe271b8c784",
+                              "ACMCertificateArn":  "arn:aws:acm:us-east-1:849354442724:certificate/d52b767a-58fb-4b2c-9146-4fe271b8c784",
+                              "CertificateSource":  "acm",
+                              "SSLSupportMethod":  "sni-only"
+                          },
+    "Restrictions":  {
+                         "GeoRestriction":  {
+                                                "RestrictionType":  "none",
+                                                "Quantity":  0
+                                            }
+                     },
+    "WebACLId":  "",
+    "HttpVersion":  "http1.1",
+    "IsIPV6Enabled":  true,
+    "ContinuousDeploymentPolicyId":  "",
+    "Staging":  false
+}

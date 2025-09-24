@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="container mt-4">
     <div class="text-center mb-4">
       <h2>AI-Powered Travel Recommendations</h2>
@@ -206,7 +206,7 @@
           <div class="card" v-if="itinerary.length">
             <div class="card-body">
               <h5 class="card-title">Route Map</h5>
-              <div class="map-wrapper"><div id="map"></div></div>
+              <div id="map" style="height: 320px;"></div>
             </div>
           </div>
         </div>
@@ -225,7 +225,7 @@
               
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="badge bg-primary">{{ rec.category }}</span>
-                <span class="badge bg-warning text-dark" v-if="rec.rating">⭐{{ rec.rating }}</span>
+                <span class="badge bg-warning text-dark" v-if="rec.rating">猸恵{ rec.rating }}</span>
               </div>
 
               <div class="small text-muted mb-2" v-if="rec.price_range">
@@ -252,7 +252,7 @@
               <p class="card-text small">{{ attraction.description }}</p>
               <div>
                 <span class="badge bg-primary me-1">{{ attraction.category }}</span>
-                <span class="badge bg-warning text-dark" v-if="attraction.rating">⭐{{ attraction.rating }}</span>
+                <span class="badge bg-warning text-dark" v-if="attraction.rating">猸恵{ attraction.rating }}</span>
               </div>
               <div class="small text-muted mt-2" v-if="attraction.price_range">
                 Price: ${{ attraction.price_range[0] }} - ${{ attraction.price_range[1] }}
@@ -588,10 +588,6 @@ export default {
         attributionControl: true
       })
 
-      this.map.whenReady(() => {
-        requestAnimationFrame(() => this.map.invalidateSize())
-      })
-
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: 'OpenStreetMap contributors',
         maxZoom: 19
@@ -648,7 +644,7 @@ export default {
         this.map.fitBounds(bounds, { padding: [20, 20] })
       }
 
-      requestAnimationFrame(() => this.map.invalidateSize())
+      this.map.invalidateSize()
       this.mapInitialized = true
     },
 
@@ -666,7 +662,7 @@ export default {
 
     formatTravel(travel) {
       if (!travel || travel.distance_km == null) {
-        return 'N/A'
+        return '猸?
       }
       return `${travel.distance_km} km - ${travel.duration_minutes} min`
     },
@@ -693,18 +689,6 @@ export default {
 
 
 <style scoped>
-.map-wrapper {
-  height: 320px;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-#map {
-  width: 100%;
-  height: 100%;
-}
-
-
 .card {
   border-radius: 8px;
 }
@@ -727,11 +711,6 @@ export default {
   border: none;
 }
 </style>
-
-
-
-
-
 
 
 

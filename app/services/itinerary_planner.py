@@ -78,17 +78,19 @@ class ItineraryPlanner:
         attractions: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         coords: List[Tuple[float, float]] = []
-        for attraction in attractions:
+        coord_index_map: Dict[int, int] = {}
+        for idx, attraction in enumerate(attractions):
             loc = attraction.get("location", {})
             lat = loc.get("lat")
             lng = loc.get("lng")
             if lat is None or lng is None:
                 logger.debug("Attraction %s missing location", attraction.get("name"))
                 continue
+            coord_index_map[idx] = len(coords)
             coords.append((lat, lng))
 
-        origins = []
-        destinations = []
+        origins: List[Tuple[float, float]] = []
+        destinations: List[Tuple[float, float]] = []
         if coords:
             if start:
                 origins = [start] + coords[:-1]
@@ -108,21 +110,11 @@ class ItineraryPlanner:
         )
 
         for idx, attraction in enumerate(attractions):
-            travel_info: Dict[str, Any]
-            if travel_matrix and idx < len(travel_matrix):
-                result = travel_matrix[idx][idx]
-                travel_info = result if result else {"distance_km": None, "duration_minutes": None}
-            elif start and idx == 0:
-                travel_info = {
-                    "distance_km": self.maps.haversine_distance(start, coords[idx]) if coords else None,
-                    "duration_minutes": 20,
-                }
-            else:
-                travel_info = {"distance_km": None, "duration_minutes": None}
+            travel_info = self._resolve_segment_travel(idx, coords, coord_index_map, start, travel_matrix)
 
-            if travel_info.get("distance_km"):
+            if travel_info.get("distance_km") is not None:
                 total_distance += travel_info["distance_km"]
-            if travel_info.get("duration_minutes"):
+            if travel_info.get("duration_minutes") is not None:
                 total_duration += travel_info["duration_minutes"]
 
             arrival = start_time + datetime.timedelta(minutes=total_duration)
@@ -146,5 +138,39 @@ class ItineraryPlanner:
             "total_duration_minutes": round(total_duration, 1),
         }
 
+    def _resolve_segment_travel(
+        self,
+        attraction_idx: int,
+        coords: List[Tuple[float, float]],
+        coord_index_map: Dict[int, int],
+        start: Optional[Tuple[float, float]],
+        travel_matrix: Optional[List[List[Dict[str, float]]]],
+    ) -> Dict[str, Optional[float]]:
+        coord_idx = coord_index_map.get(attraction_idx)
+        if coord_idx is None or coord_idx >= len(coords):
+            return {"distance_km": None, "duration_minutes": None}
+
+        if travel_matrix and coord_idx < len(travel_matrix):
+            row = travel_matrix[coord_idx]
+            if coord_idx < len(row):
+                result = row[coord_idx]
+                if result:
+                    return result
+
+        previous_point: Optional[Tuple[float, float]] = None
+        if coord_idx == 0:
+            previous_point = start
+        elif coord_idx - 1 < len(coords):
+            previous_point = coords[coord_idx - 1]
+
+        if not previous_point:
+            return {"distance_km": None, "duration_minutes": None}
+
+        distance = self.maps.haversine_distance(previous_point, coords[coord_idx])
+        estimated_speed_kmh = 50.0
+        duration = round((distance / estimated_speed_kmh) * 60, 1) if distance is not None else None
+        return {"distance_km": distance, "duration_minutes": duration}
+
 
 itinerary_planner = ItineraryPlanner()
+

@@ -31,3 +31,44 @@ body {
 .btn-primary:hover {
   background: linear-gradient(45deg, #0056b3, #004085);
 }
+body {
+  background-color: #f5f7fb;
+  color: #1f2933;
+}
+
+.navbar {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+.navbar-brand {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.card {
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.card-title {
+  font-weight: 600;
+}
+
+.badge {
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.btn-outline-secondary {
+  border-radius: 6px;
+}
+
+.leaflet-container {
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.alert {
+  border-radius: 12px;
+}

@@ -105,5 +105,59 @@ class ItineraryRepository:
             logger.debug('Failed to publish CloudWatch metric %s: %s', metric_name, exc)
 
 
+
+    def delete_itinerary(self, user_id: str, itinerary_id: str) -> bool:
+        table = self._table
+        fallback_items = self._fallback_store.get(user_id, [])
+
+        if table is None:
+            before = len(fallback_items)
+            self._fallback_store[user_id] = [
+                item for item in fallback_items if item.get("itinerary_id") != itinerary_id
+            ]
+            return len(self._fallback_store[user_id]) != before
+
+        try:
+            table.delete_item(
+                Key={
+                    "pk": f"USER#{user_id}",
+                    "sk": f"ITINERARY#{itinerary_id}"
+                }
+            )
+            return True
+        except ClientError as exc:
+            logger.error("Failed to delete itinerary %s: %s", itinerary_id, exc)
+            return False
+
+    def delete_all_itineraries(self, user_id: str) -> int:
+        table = self._table
+        count = 0
+
+        if table is None:
+            count = len(self._fallback_store.get(user_id, []))
+            self._fallback_store[user_id] = []
+            return count
+
+        try:
+            response = table.query(
+                KeyConditionExpression="pk = :pk",
+                ExpressionAttributeValues={":pk": f"USER#{user_id}"},
+                ProjectionExpression="pk, sk"
+            )
+        except ClientError as exc:
+            logger.error("Failed to fetch itineraries for deletion: %s", exc)
+            return 0
+
+        items = response.get("Items", [])
+        if not items:
+            return 0
+
+        with table.batch_writer() as batch:
+            for record in items:
+                batch.delete_item(Key={"pk": record["pk"], "sk": record["sk"]})
+                count += 1
+
+        return count
+
 itinerary_repository = ItineraryRepository()
 

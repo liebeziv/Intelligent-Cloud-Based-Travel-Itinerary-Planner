@@ -46,7 +46,7 @@ if [[ -f "${ZIP_FILE}" ]]; then
   rm -f "${ZIP_FILE}"
 fi
 
-EXCLUDES_JOINED=$(printf "%s\\n" "${EXCLUDES[@]}")
+EXCLUDES_JOINED=$(printf "%s\n" "${EXCLUDES[@]}")
 
 env ZIP_FILE="${ZIP_FILE}" EXCLUDES="${EXCLUDES_JOINED}" python3 <<'PY'
 import fnmatch
@@ -54,16 +54,16 @@ import os
 import zipfile
 
 zip_file = os.environ["ZIP_FILE"]
-excludes = [p for p in os.environ["EXCLUDES"].split("\\n") if p]
+excludes = [p for p in os.environ["EXCLUDES"].split("\n") if p]
 root_dir = os.getcwd()
 
-with zipfile.ZipFile(zip_file, "w" zipfile.ZIP_DEFLATED) as bundle:
+with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED) as bundle:
     for folder, _, files in os.walk(root_dir):
         rel_dir = os.path.relpath(folder, root_dir)
         if rel_dir == ".":
             rel_dir = ""
         skip_dir = any(
-            pattern.endswith("/*") and fnmatch.fnmatch(rel_dir + "/" pattern)
+            pattern.endswith("/*") and fnmatch.fnmatch(rel_dir + "/", pattern)
             or (pattern and fnmatch.fnmatch(rel_dir, pattern))
             for pattern in excludes
         )
@@ -81,31 +81,15 @@ echo "Uploading package to S3..."
 "${AWS_BIN}" s3 cp "${ZIP_FILE}" "s3://${BUCKET_NAME}/${S3_KEY}" --region "${REGION}"
 
 echo "Creating new application version ${VERSION_LABEL}..."
-"${AWS_BIN}" elasticbeanstalk create-application-version \\
-    --application-name "${APP_NAME}" \\
-    --version-label "${VERSION_LABEL}" \\
-    --source-bundle S3Bucket="${BUCKET_NAME}"S3Key="${S3_KEY}" \\
-    --region "${REGION}"
+"${AWS_BIN}" elasticbeanstalk create-application-version --application-name "${APP_NAME}" --version-label "${VERSION_LABEL}" --source-bundle S3Bucket="${BUCKET_NAME}",S3Key="${S3_KEY}" --region "${REGION}"
 
 echo "Updating environment ${ENV_NAME}..."
-"${AWS_BIN}" elasticbeanstalk update-environment \\
-    --application-name "${APP_NAME}" \\
-    --environment-name "${ENV_NAME}" \\
-    --version-label "${VERSION_LABEL}" \\
-    --region "${REGION}"
+"${AWS_BIN}" elasticbeanstalk update-environment --application-name "${APP_NAME}" --environment-name "${ENV_NAME}" --version-label "${VERSION_LABEL}" --region "${REGION}"
 
 echo "Waiting for deployment to finish..."
-"${AWS_BIN}" elasticbeanstalk wait environment-updated \\
-    --application-name "${APP_NAME}" \\
-    --environment-name "${ENV_NAME}" \\
-    --region "${REGION}"
+"${AWS_BIN}" elasticbeanstalk wait environment-updated --application-name "${APP_NAME}" --environment-name "${ENV_NAME}" --region "${REGION}"
 
-URL=$("${AWS_BIN}" elasticbeanstalk describe-environments \\
-    --application-name "${APP_NAME}" \\
-    --environment-names "${ENV_NAME}" \\
-    --region "${REGION}" \\
-    --query "Environments[0].CNAME" \\
-    --output text)
+URL=$("${AWS_BIN}" elasticbeanstalk describe-environments --application-name "${APP_NAME}" --environment-names "${ENV_NAME}" --region "${REGION}" --query "Environments[0].CNAME" --output text)
 
 echo "Deployment complete."
 echo "URL: http://${URL}"

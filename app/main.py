@@ -4,9 +4,9 @@ import uuid
 import datetime
 import logging
 import traceback
-from typing import Optional
+from typing import List, Optional
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.responses import JSONResponse
 from pydantic import BaseModel
@@ -20,6 +20,7 @@ from app.schemas.recommendation import RecommendationRequest
 from app.services.dynamodb_repository import itinerary_repository
 from app.services.itinerary_planner import itinerary_planner
 from app.services.notification_service import notification_service
+from app.services.attraction_service import attraction_service
 
 
 log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -164,6 +165,26 @@ app.add_middleware(
 logger.info("? CORS middleware added")
 
 
+
+@app.get("/api/attractions")
+def list_attractions_api(
+    region: Optional[str] = Query(None, description="Filter by region"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    limit: Optional[int] = Query(None, ge=1, le=50, description="Maximum number of results")
+):
+    """Return curated attraction data for the frontend."""
+    items = attraction_service.list_attractions(region=region, category=category, limit=limit)
+    return items
+
+
+@app.get("/api/attractions/{attraction_id}")
+def get_attraction_api(attraction_id: str):
+    item = attraction_service.get_attraction(attraction_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Attraction not found")
+    return item
+
+
 if HAS_RECOMMENDATIONS:
     try:
         app.include_router(recommendation_router)
@@ -224,6 +245,7 @@ class LoginRequest(BaseModel):
 class ItineraryRequest(BaseModel):
     title: str
     items: list = []  
+    metadata: Optional[dict] = None
 
 
 @app.on_event("startup")
@@ -336,8 +358,7 @@ def debug_info():
 def register(payload: RegisterRequest):
     logger.info(f"Register attempt for email: {payload.email}")
     try:
-        existing_user = auth.authenticate_user(payload.email, "dummy_password")
-        if existing_user:
+        if auth.user_exists(payload.email):
             logger.warning(f"Registration failed - email exists: {payload.email}")
             return JSONResponse({"detail": "email exists"}, status_code=400)
     except Exception as e:
@@ -364,8 +385,9 @@ def login(payload: LoginRequest):
             return JSONResponse({"detail": "invalid credentials"}, status_code=401)
 
         token = auth.create_access_token({"sub": user["id"], "email": user["email"]})
+        user_payload = {"id": user.get("id"), "email": user.get("email"), "name": user.get("name")}
         logger.info(f"Login successful: {payload.email}")
-        return {"access_token": token, "token_type": "bearer"}
+        return {"access_token": token, "token_type": "bearer", "user": user_payload}
     except Exception as e:
         logger.error(f"Login error: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
@@ -384,6 +406,7 @@ def create_itinerary(payload: ItineraryRequest, current_user=Depends(auth.get_cu
             "owner": current_user['id'],
             "title": payload.title,
             "items": payload.items,
+            "metadata": payload.metadata or {},
             "createdAt": datetime.datetime.utcnow().isoformat()
         }
 
@@ -415,6 +438,51 @@ def get_itineraries(current_user=Depends(auth.get_current_user)):
         logger.error(f"Traceback: {traceback.format_exc()}")
         print(f"Error getting itineraries: {e}")
         return []
+
+
+
+@app.get("/api/itineraries/me")
+def get_my_itineraries(current_user=Depends(auth.get_current_user)):
+    logger.info(f"Fetching itineraries for current user {current_user['id']}")
+    return itinerary_repository.list_itineraries(current_user['id'])
+
+
+@app.get("/api/itineraries/user/{user_id}")
+def get_user_itineraries(user_id: str, current_user=Depends(auth.get_current_user)):
+    if current_user['id'] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorised to access these itineraries")
+    return itinerary_repository.list_itineraries(user_id)
+
+
+@app.delete("/api/itineraries/{itinerary_id}")
+def delete_itinerary(itinerary_id: str, current_user=Depends(auth.get_current_user)):
+    logger.info(f"Deleting itinerary {itinerary_id} for user {current_user['id']}")
+    deleted = itinerary_repository.delete_itinerary(current_user['id'], itinerary_id)
+    if deleted and s3utils:
+        key = f"itineraries/{current_user['id']}/{itinerary_id}.json"
+        try:
+            s3utils.delete_object(key)
+        except Exception as exc:
+            logger.warning(f"Failed to delete itinerary archive {key}: {exc}")
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Itinerary not found")
+    return {"status": "deleted", "itinerary_id": itinerary_id}
+
+
+@app.delete("/api/itineraries")
+def delete_all_itineraries(current_user=Depends(auth.get_current_user)):
+    logger.info(f"Deleting all itineraries for user {current_user['id']}")
+    removed = itinerary_repository.delete_all_itineraries(current_user['id'])
+    if s3utils and removed:
+        prefix = f"itineraries/{current_user['id']}/"
+        for obj in s3utils.list_objects_with_prefix(prefix):
+            key = obj.get('Key')
+            if key:
+                try:
+                    s3utils.delete_object(key)
+                except Exception as exc:
+                    logger.warning(f"Failed to delete itinerary archive {key}: {exc}")
+    return {"status": "deleted", "count": removed}
 
 @app.get("/api/upload-url")
 def upload_url(filename: str, current_user=Depends(auth.get_current_user)):
@@ -456,6 +524,8 @@ if __name__ == "__main__":
     )
 
     
+
+
 
 
 
