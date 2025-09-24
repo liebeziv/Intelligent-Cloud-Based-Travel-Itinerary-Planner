@@ -1,0 +1,4 @@
+runsteps(Terminal):
+cd frontend
+npm i -D vitest @vue/test-utils jsdom @testing-library/vue
+npm run test
