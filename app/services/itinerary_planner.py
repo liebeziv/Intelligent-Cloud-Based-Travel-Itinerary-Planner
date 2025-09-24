@@ -22,12 +22,16 @@ class ItineraryPlanner:
         request: RecommendationRequest,
         recommendations: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
+        logger.info(f"Building itinerary for request with {len(recommendations) if recommendations else 0} recommendations")
+        
         if not recommendations:
+            logger.warning("No recommendations available to build itinerary")
             return {
                 "itinerary_id": str(uuid.uuid4()),
                 "days": [],
                 "summary": {"total_attractions": 0},
                 "weather": None,
+                "message": "No attractions found matching your preferences"
             }
 
         duration = max(1, request.preferences.duration)

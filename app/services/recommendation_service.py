@@ -2,10 +2,11 @@ from typing import List, Dict, Any, Optional
 import logging
 from ..core.recommendation import HybridRecommender
 from ..schemas.recommendation import (
-    RecommendationRequest, 
-    RecommendationResponse, 
-    AttractionRecommendation
+    RecommendationRequest,
+    RecommendationResponse,
+    AttractionRecommendation,
 )
+from .open_data_service import load_default_sources
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,22 @@ class RecommendationService:
         """Get personalized recommendations with distance filtering"""
         if not self.is_initialized:
             logger.warning("Recommendation service not initialized, initializing now...")
-            from ..data.sample_attractions import SAMPLE_NZ_ATTRACTIONS
-            await self.initialize(SAMPLE_NZ_ATTRACTIONS)
+            # Try to load from configured open-data sources first
+            try:
+                open_data = load_default_sources()
+                if open_data:
+                    logger.info(f"Loaded {len(open_data)} attractions from open-data sources")
+                    await self.initialize(open_data)
+                else:
+                    from ..data.sample_attractions import SAMPLE_NZ_ATTRACTIONS
+                    if not SAMPLE_NZ_ATTRACTIONS:
+                        logger.error("No sample attractions data available")
+                        raise ValueError("No attractions data available")
+                    logger.info(f"Loading {len(SAMPLE_NZ_ATTRACTIONS)} sample attractions")
+                    await self.initialize(SAMPLE_NZ_ATTRACTIONS)
+            except Exception as e:
+                logger.error(f"Failed to initialize recommendation service: {str(e)}")
+                raise
 
         try:
             logger.info(f"Processing recommendation request for user {request.user_id}")

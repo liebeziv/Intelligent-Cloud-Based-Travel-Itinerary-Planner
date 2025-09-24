@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(default=True, env="DEBUG")
 
     # DynamoDB tables
-    DYNAMODB_USERS_TABLE: str = Field(default="Users", env="DYNAMODB_USERS_TABLE")
-    DYNAMODB_ITINERARIES_TABLE: str = Field(default="Itineraries", env="DYNAMODB_ITINERARIES_TABLE")
+    DYNAMODB_USERS_TABLE: str = Field(default="trip-planner-users-849354442724", env="DYNAMODB_USERS_TABLE")
+    DYNAMODB_ITINERARIES_TABLE: str = Field(default="trip-planner-itineraries-849354442724", env="DYNAMODB_ITINERARIES_TABLE")
 
     @property
     def SNS_TOPIC_ARN(self) -> str:

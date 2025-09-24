@@ -1,7 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFront distribution (OAC) for travel-planner frontend S3 bucket (private).
 
-Parameters: {}
+Parameters:
+  ApiDomainName:
+    Type: String
+    Default: travel-planner-prod.eba-92jxgmqv.us-east-1.elasticbeanstalk.com
+    Description: Domain name of the backend API (Elastic Beanstalk ALB hostname)
 Mappings: {}
 Conditions: {}
 
@@ -10,11 +14,41 @@ Resources:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
       OriginAccessControlConfig:
-        Name: frontend-oac
+        Name: !Sub "frontend-oac-${AWS::StackName}"
         Description: OAC for private S3 origin
         OriginAccessControlOriginType: s3
         SigningBehavior: always
         SigningProtocol: sigv4
+
+  ApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "api-cache-${AWS::StackName}"
+        DefaultTTL: 0
+        MaxTTL: 0
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
+          HeadersConfig:
+            HeaderBehavior: none
+          CookiesConfig:
+            CookieBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  ApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub "api-origin-${AWS::StackName}"
+        HeadersConfig:
+          HeaderBehavior: allViewer
+        CookiesConfig:
+          CookieBehavior: all
+        QueryStringsConfig:
+          QueryStringBehavior: all
 
   FrontendDistribution:
     Type: AWS::CloudFront::Distribution
@@ -29,6 +63,11 @@ Resources:
             DomainName: !Sub "travel-planner-frontend-${AWS::AccountId}-lz.s3.${AWS::Region}.amazonaws.com"
             S3OriginConfig: {}                  # OAC
             OriginAccessControlId: !Ref FrontendOAC
+          - Id: api-origin
+            DomainName: !Ref ApiDomainName
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+              OriginSSLProtocols: [TLSv1.2]
         DefaultCacheBehavior:
           TargetOriginId: s3-frontend-origin
           ViewerProtocolPolicy: redirect-to-https
@@ -36,6 +75,23 @@ Resources:
           CachedMethods: [GET, HEAD]
           # AWS Managed "CachingOptimized" policy
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        CacheBehaviors:
+          - PathPattern: 'api/*'
+            TargetOriginId: api-origin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD, OPTIONS]
+            CachePolicyId: !Ref ApiCachePolicy
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            ResponseHeadersPolicyId: 5cc3b908-e619-4b99-88e5-2cf7f45965bd
+          - PathPattern: 'auth/*'
+            TargetOriginId: api-origin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD, OPTIONS]
+            CachePolicyId: !Ref ApiCachePolicy
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            ResponseHeadersPolicyId: 5cc3b908-e619-4b99-88e5-2cf7f45965bd
         CustomErrorResponses:
           - ErrorCode: 403
             ResponseCode: 200

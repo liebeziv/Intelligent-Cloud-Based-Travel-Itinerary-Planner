@@ -7,6 +7,9 @@ Resources:
     Properties:
       TableName: "travel-planner-users-849354442724"
       BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      # Optionally you can specify KMSMasterKeyId for a customer-managed CMK
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -28,6 +31,8 @@ Resources:
     Properties:
       TableName: "travel-planner-itineraries-849354442724"
       BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -53,3 +58,6 @@ Outputs:
     Value: !Ref ItinerariesTable
     Export:
       Name: travel-planner-dynamodb-itineraries-table-name
+
+# Note: The application expects table names in the environment variables
+# `DYNAMODB_USERS_TABLE` and `DYNAMODB_ITINERARIES_TABLE` (see app/config.py).

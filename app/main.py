@@ -147,17 +147,17 @@ def _populate_app_state(fastapi_app: FastAPI) -> None:
 _populate_app_state(app)
 
 
+allowed_origins = [
+    "https://d35vyyonooyid7.cloudfront.net",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "*"  # Allow all origins during testing - remove in production
+]
+
 logger.info("Adding CORS middleware...")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://d35vyyonooyid7.cloudfront.net",
-        "https://aitravelplan.site",
-        "https://www.aitravelplan.site",
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:8080"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

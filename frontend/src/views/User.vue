@@ -28,56 +28,57 @@
           </div>
           <div class="card-body">
             <div v-if="loading" class="text-center text-muted py-3">
-            <div class="spinner-border spinner-border-sm" role="status"></div>
-            <span class="ms-2">Loading trips...</span>
-          </div>
+              <div class="spinner-border spinner-border-sm" role="status"></div>
+              <span class="ms-2">Loading trips...</span>
+            </div>
 
-          <div v-else>
-            <div v-if="error" class="alert alert-warning p-2">{{ error }}</div>
-            <div v-if="!trips.length" class="text-muted">No trips saved yet. Plan a trip and click Save Trip.</div>
+            <div v-else>
+              <div v-if="error" class="alert alert-warning p-2">{{ error }}</div>
+              <div v-if="!trips.length" class="text-muted">No trips saved yet. Plan a trip and click Save Trip.</div>
 
-            <div class="accordion" id="tripsAccordion" v-else>
-              <div class="accordion-item" v-for="(trip, idx) in trips" :key="trip.id">
-                <h2 class="accordion-header">
-                  <button class="accordion-button" :class="{ collapsed: idx !== 0 }" type="button" :data-bs-toggle="'collapse'" :data-bs-target="`#trip${idx}`">
-                    <strong>{{ trip.location?.address || 'Trip' }}</strong>
-                    <span class="ms-2 text-muted">{{ trip.preferences?.duration }} days</span>
-                  </button>
-                </h2>
-                <div :id="`trip${idx}`" class="accordion-collapse collapse" :class="{ show: idx === 0 }" :data-bs-parent="'#tripsAccordion'">
-                  <div class="accordion-body">
-                    <div class="row g-3">
-                      <div class="col-md-6">
-                        <div class="small text-muted">Destination</div>
-                        <div>{{ trip.location?.address }}</div>
-                      </div>
-                      <div class="col-md-6">
-                        <div class="small text-muted">Trip Duration (days)</div>
-                        <div>{{ trip.preferences?.duration }}</div>
-                      </div>
-                      <div class="col-md-6">
-                        <div class="small text-muted">Activity Types</div>
-                        <div>
-                          <span v-for="a in trip.preferences?.activity_types || []" :key="a" class="badge bg-primary me-1">{{ a }}</span>
+              <div v-else class="accordion" id="tripsAccordion">
+                <div class="accordion-item" v-for="(trip, idx) in trips" :key="trip.id">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button" :class="{ collapsed: idx !== 0 }" type="button" :data-bs-toggle="'collapse'" :data-bs-target="`#trip${idx}`">
+                      <strong>{{ trip.location?.address || 'Trip' }}</strong>
+                      <span class="ms-2 text-muted">{{ trip.preferences?.duration }} days</span>
+                    </button>
+                  </h2>
+                  <div :id="`trip${idx}`" class="accordion-collapse collapse" :class="{ show: idx === 0 }" :data-bs-parent="'#tripsAccordion'">
+                    <div class="accordion-body">
+                      <div class="row g-3">
+                        <div class="col-md-6">
+                          <div class="small text-muted">Destination</div>
+                          <div>{{ trip.location?.address }}</div>
+                        </div>
+                        <div class="col-md-6">
+                          <div class="small text-muted">Trip Duration (days)</div>
+                          <div>{{ trip.preferences?.duration }}</div>
+                        </div>
+                        <div class="col-md-6">
+                          <div class="small text-muted">Activity Types</div>
+                          <div>
+                            <span v-for="a in trip.preferences?.activity_types || []" :key="a" class="badge bg-primary me-1">{{ a }}</span>
+                          </div>
+                        </div>
+                        <div class="col-md-6">
+                          <div class="small text-muted">Budget (NZD)</div>
+                          <div>${{ trip.preferences?.budget_range?.[0] }} - ${{ trip.preferences?.budget_range?.[1] }}</div>
+                        </div>
+                        <div class="col-md-6">
+                          <div class="small text-muted">Travel Style</div>
+                          <div class="text-capitalize">{{ trip.preferences?.travel_style }}</div>
+                        </div>
+                        <div class="col-md-6">
+                          <div class="small text-muted">Group Size</div>
+                          <div>{{ trip.preferences?.group_size }}</div>
                         </div>
                       </div>
-                      <div class="col-md-6">
-                        <div class="small text-muted">Budget (NZD)</div>
-                        <div>${{ trip.preferences?.budget_range?.[0] }} - ${{ trip.preferences?.budget_range?.[1] }}</div>
-                      </div>
-                      <div class="col-md-6">
-                        <div class="small text-muted">Travel Style</div>
-                        <div class="text-capitalize">{{ trip.preferences?.travel_style }}</div>
-                      </div>
-                      <div class="col-md-6">
-                        <div class="small text-muted">Group Size</div>
-                        <div>{{ trip.preferences?.group_size }}</div>
-                      </div>
-                    </div>
 
-                    <div class="mt-3 d-flex gap-2">
-                      <button class="btn btn-sm btn-outline-primary" @click="reopenTrip(trip)">Open in Planner</button>
-                      <button class="btn btn-sm btn-outline-danger" @click="deleteTrip(trip.id)">Delete</button>
+                      <div class="mt-3 d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" @click="reopenTrip(trip)">Open in Planner</button>
+                        <button class="btn btn-sm btn-outline-danger" @click="deleteTrip(trip.id)">Delete</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -88,7 +89,6 @@
       </div>
     </div>
   </div>
-  
 </template>
 
 <script>

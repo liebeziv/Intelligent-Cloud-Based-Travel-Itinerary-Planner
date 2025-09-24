@@ -7,11 +7,12 @@
         </router-link>
 
         <div class="navbar-nav ms-auto" v-if="!isLoggedIn">
-          <router-link class="nav-link" to="/login">Login</router-link>
-          <router-link class="nav-link" to="/register">Register</router-link>
+          <router-link class="nav-link" to="/login" @click="notifyAuthChange">Login</router-link>
+          <router-link class="nav-link" to="/register" @click="notifyAuthChange">Register</router-link>
         </div>
         
-        <div class="navbar-nav ms-auto" v-else>
+        <div class="navbar-nav ms-auto align-items-center" v-else>
+          <router-link class="nav-link me-2" to="/user">My Trips</router-link>
           <span class="navbar-text me-3">Welcome, {{ userName }}</span>
           <button @click="logout" class="btn btn-outline-light btn-sm">Logout</button>
         </div>
@@ -25,21 +26,56 @@
 <script>
 export default {
   name: 'App',
+  data() {
+    return {
+      auth: this.readAuthState()
+    }
+  },
   computed: {
     isLoggedIn() {
-      return !!localStorage.getItem('token')
+      return !!this.auth.token
     },
     userName() {
-      return localStorage.getItem('userName') || 'User'
+      if (this.auth.name) {
+        return this.auth.name
+      }
+      if (this.auth.email) {
+        return this.auth.email.split('@')[0]
+      }
+      return 'User'
     }
   },
   methods: {
+    readAuthState() {
+      return {
+        token: localStorage.getItem('token') || '',
+        name: localStorage.getItem('userName') || '',
+        email: localStorage.getItem('userEmail') || ''
+      }
+    },
+    notifyAuthChange() {
+      window.dispatchEvent(new Event('auth-changed'))
+    },
+    syncAuthState() {
+      this.auth = this.readAuthState()
+    },
     logout() {
       localStorage.removeItem('token')
       localStorage.removeItem('userName')
-      this.$router.push('/')
-      location.reload()
+      localStorage.removeItem('userEmail')
+      localStorage.removeItem('userId')
+      this.syncAuthState()
+      this.notifyAuthChange()
+      this.$router.push({ name: 'Home' })
     }
+  },
+  mounted() {
+    window.addEventListener('auth-changed', this.syncAuthState)
+    window.addEventListener('storage', this.syncAuthState)
+  },
+  beforeUnmount() {
+    window.removeEventListener('auth-changed', this.syncAuthState)
+    window.removeEventListener('storage', this.syncAuthState)
   }
 }
 </script>
