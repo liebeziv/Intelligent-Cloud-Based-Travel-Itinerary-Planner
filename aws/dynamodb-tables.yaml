@@ -1,11 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: DynamoDB tables for Trip Planner
+Description: DynamoDB tables for travel Planner
 
 Resources:
   UsersTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: "trip-planner-users-849354442724"
+      TableName: "travel-planner-users-849354442724"
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: id
@@ -26,7 +26,7 @@ Resources:
   ItinerariesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: "trip-planner-itineraries-849354442724"
+      TableName: "travel-planner-itineraries-849354442724"
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: id
@@ -47,5 +47,9 @@ Resources:
 Outputs:
   UsersTableName:
     Value: !Ref UsersTable
+    Export:
+      Name: travel-planner-dynamodb-users-table-name
   ItinerariesTableName:
     Value: !Ref ItinerariesTable
+    Export:
+      Name: travel-planner-dynamodb-itineraries-table-name

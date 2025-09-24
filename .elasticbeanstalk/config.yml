@@ -1,0 +1,8 @@
+﻿branch-defaults:
+  default:
+    environment: travel-planner-prod
+global:
+  application_name: travel-planner-backend
+  default_platform: Python 3.11 running on 64bit Amazon Linux 2023
+  default_region: us-east-1
+  profile: eb-cli

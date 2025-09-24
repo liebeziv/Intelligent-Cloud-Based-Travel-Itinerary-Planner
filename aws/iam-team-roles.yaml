@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: IAM roles for Trip Planner team - BackendDeployer, FrontendPublisher, Observer, SecretsAdmin.
+Description: IAM roles for travel Planner team - BackendDeployer, FrontendPublisher, Observer, SecretsAdmin.
 
 Parameters:
   TrustedPrincipalArns:
@@ -9,11 +9,11 @@ Parameters:
   # Project-scoped values
   BackendStackName:
     Type: String
-    Default: "trip-planner-backend"
+    Default: "travel-planner-backend"
     Description: CloudFormation stack name for the backend.
   BackendInstanceRoleName:
     Type: String
-    Default: "trip-planner-backend-role-849354442724"
+    Default: "travel-planner-backend-role-849354442724"
     Description: EC2 instance role name used by the backend (for iam:PassRole constraint).
   FrontendBucketName:
     Type: String
@@ -69,8 +69,8 @@ Resources:
                   - logs:GetLogEvents
                   - logs:FilterLogEvents
                 Resource:
-                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/trip-planner/*"
-                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/trip-planner/*:log-stream:*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/travel-planner/*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/travel-planner/*:log-stream:*"
               # DynamoDB access for project tables
               - Effect: Allow
                 Action:
@@ -85,14 +85,14 @@ Resources:
                   - dynamodb:DeleteItem
                   - dynamodb:Query
                   - dynamodb:Scan
-                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/trip-planner-*"
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/travel-planner-*"
               # SNS permissions for notifications
               - Effect: Allow
                 Action:
                   - sns:Publish
                   - sns:GetTopicAttributes
                   - sns:ListTopics
-                Resource: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:topic/trip-planner-*"
+                Resource: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:topic/travel-planner-*"
               # CloudWatch monitoring and alarms
               - Effect: Allow
                 Action:
@@ -178,7 +178,7 @@ Resources:
         - arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess
         - arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess
       Policies:
-        - PolicyName: trip-planner-read-only
+        - PolicyName: travel-planner-read-only
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -186,8 +186,8 @@ Resources:
               - Effect: Allow
                 Action: [ "logs:DescribeLogGroups", "logs:DescribeLogStreams", "logs:GetLogEvents", "logs:FilterLogEvents" ]
                 Resource:
-                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/trip-planner/*"
-                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/trip-planner/*:log-stream:*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/travel-planner/*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/travel-planner/*:log-stream:*"
               # S3 read access for project buckets
               - Effect: Allow
                 Action: [ "s3:ListBucket", "s3:GetObject" ]
@@ -202,14 +202,14 @@ Resources:
                 Resource: "*"
                 Condition:
                   StringLike:
-                    sns:TopicName: "*trip-planner*"
+                    sns:TopicName: "*travel-planner*"
               # EC2 read access for project instances
               - Effect: Allow
                 Action: [ "ec2:DescribeInstances", "ec2:DescribeImages", "ec2:DescribeSecurityGroups" ]
                 Resource: "*"
                 Condition:
                   StringEquals:
-                    "ec2:ResourceTag/Project": "trip-planner"
+                    "ec2:ResourceTag/Project": "travel-planner"
 
   # ---------------- SecretsAdmin ----------------
   SecretsAdminRole:
@@ -241,7 +241,7 @@ Resources:
                   - secretsmanager:TagResource
                   - secretsmanager:UntagResource
                   - secretsmanager:ListSecrets
-                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:trip-planner/*"
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:travel-planner/*"
               # Basic console access for monitoring
               - Effect: Allow
                 Action:

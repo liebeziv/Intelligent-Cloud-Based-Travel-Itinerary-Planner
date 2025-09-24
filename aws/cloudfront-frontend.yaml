@@ -21,12 +21,12 @@ Resources:
     Properties:
       DistributionConfig:
         Enabled: true
-        Comment: Trip Planner Frontend (OAC to S3 private)
+        Comment: travel Planner Frontend (OAC to S3 private)
         DefaultRootObject: index.html
         IPV6Enabled: true
         Origins:
           - Id: s3-frontend-origin
-            DomainName: !Sub "travel-planner-frontend-${AWS::AccountId}.s3.${AWS::Region}.amazonaws.com"
+            DomainName: !Sub "travel-planner-frontend-${AWS::AccountId}-lz.s3.${AWS::Region}.amazonaws.com"
             S3OriginConfig: {}                  # OAC
             OriginAccessControlId: !Ref FrontendOAC
         DefaultCacheBehavior:
@@ -49,10 +49,10 @@ Outputs:
     Description: CloudFront Distribution ID
     Value: !Ref FrontendDistribution
     Export:
-      Name: trip-planner-frontend-cf-DistributionId
+      Name: travel-planner-frontend-cf-DistributionId
   FrontendDistributionDomainName:
     Description: CloudFront domain you will use in the browser
     Value: !GetAtt FrontendDistribution.DomainName
     Export:
-      Name: trip-planner-frontend-cf-DomainName
+      Name: travel-planner-frontend-cf-DomainName
 

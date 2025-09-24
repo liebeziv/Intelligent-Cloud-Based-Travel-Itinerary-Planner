@@ -1,0 +1,15 @@
+﻿.git/
+frontend/
+database/
+dist/
+node_modules/
+scripts/
+venv/
+__pycache__/
+*.db
+*.log
+*.md
+Dockerfile
+docker-compose.yml
+tests/
+

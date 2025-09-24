@@ -7,6 +7,9 @@
 
 Basic CloudWatch monitoring setup for the Trip Planner application.
 
+## Prerequisites
+- Deploy the VPC, S3 buckets, DynamoDB tables, SNS topics, and EC2/ALB stacks first so their exports exist (the monitoring stack imports them).
+
 ---
 
 ## Essential Monitoring
@@ -20,8 +23,8 @@ Basic CloudWatch monitoring setup for the Trip Planner application.
   - Network traffic
 
 ### 2. **Log Groups**
-- **Backend Logs**: `/aws/ec2/trip-planner-backend-849354442724`
-- **Frontend Logs**: `/aws/cloudfront/trip-planner-frontend-849354442724`
+- **Backend Logs**: `/aws/ec2/travel-planner-backend-849354442724`
+- **Frontend Logs**: `/aws/cloudfront/travel-planner-frontend-849354442724`
 - **Retention**: 30 days
 
 ### 3. **Basic Alerts**
@@ -41,7 +44,7 @@ aws cloudformation deploy \
   --template-file cloudwatch-monitoring.yaml \
   --region us-east-1 \
   --parameter-overrides \
-    NotificationEmail="sc1040@students.waikato.ac.nz"
+    AlarmEmail="sc1040@students.waikato.ac.nz"
 ```
 
 ### 2. **Install CloudWatch Agent**
@@ -66,7 +69,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-logger = logging.getLogger('trip-planner')
+logger = logging.getLogger('travel-planner')
 
 # Usage
 logger.info("Application started")
@@ -85,4 +88,4 @@ logger.error("Error occurred")
 
 ---
 
-**Basic CloudWatch Setup Complete!** 📊✅
+**Basic CloudWatch Setup Complete!** 
