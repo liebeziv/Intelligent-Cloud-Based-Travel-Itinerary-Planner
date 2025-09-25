@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="container mt-4">
     <div class="text-center mb-4">
       <h2>AI-Powered Travel Recommendations</h2>
@@ -14,7 +14,7 @@
             <div class="col-md-6 mb-3">
               <label class="form-label">Destination</label>
               <select v-model="location.address" class="form-control" @change="updateLocation">
-                <option v-for="option in locationOptions" :key="option.label" :value="option.label">{{ option.label }}</option>
+                <option v-for="(coords, city) in locations" :key="city" :value="city">{{ city }}</option>
               </select>
             </div>
 
@@ -34,7 +34,7 @@
               <div class="col-md-6 mb-3">
                 <label class="form-label">Destination</label>
                 <select v-model="location.address" class="form-control" @change="updateLocation">
-                  <option v-for="option in locationOptions" :key="option.label" :value="option.label">{{ option.label }}</option>
+                  <option v-for="(coords, city) in locations" :key="city" :value="city">{{ city }}</option>
                 </select>
               </div>
 
@@ -206,7 +206,7 @@
           <div class="card" v-if="itinerary.length">
             <div class="card-body">
               <h5 class="card-title">Route Map</h5>
-              <div class="map-wrapper"><div id="map"></div></div>
+              <div id="map" style="height: 320px;"></div>
             </div>
           </div>
         </div>
@@ -225,7 +225,7 @@
               
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="badge bg-primary">{{ rec.category }}</span>
-                <span class="badge bg-warning text-dark" v-if="rec.rating">⭐{{ rec.rating }}</span>
+                <span class="badge bg-warning text-dark" v-if="rec.rating">猸恵{ rec.rating }}</span>
               </div>
 
               <div class="small text-muted mb-2" v-if="rec.price_range">
@@ -252,7 +252,7 @@
               <p class="card-text small">{{ attraction.description }}</p>
               <div>
                 <span class="badge bg-primary me-1">{{ attraction.category }}</span>
-                <span class="badge bg-warning text-dark" v-if="attraction.rating">⭐{{ attraction.rating }}</span>
+                <span class="badge bg-warning text-dark" v-if="attraction.rating">猸恵{ attraction.rating }}</span>
               </div>
               <div class="small text-muted mt-2" v-if="attraction.price_range">
                 Price: ${{ attraction.price_range[0] }} - ${{ attraction.price_range[1] }}
@@ -282,18 +282,13 @@ export default {
       showAdvanced: false,
       durationWarning: '',
       weatherInfo: null,
-      authState: {
-        token: localStorage.getItem('token') || '',
-        name: localStorage.getItem('userName') || '',
-        email: localStorage.getItem('userEmail') || ''
-      },
       activityOptions: ['natural', 'scenic', 'adventure', 'cultural', 'family', 'historical'],
       preferences: {
         activity_types: ['natural', 'scenic'],
         budget_range: [100, 400],
         travel_style: 'adventure',
         difficulty_preference: 'medium',
-        max_travel_distance: 150,
+        max_travel_distance: 50,
         group_size: 2,
         duration: 3,
         season: 'summer',
@@ -304,104 +299,44 @@ export default {
         lat: -41.3,
         lng: 174.8
       },
-      defaultLocationOptions: [
-        { label: 'Auckland, New Zealand', lat: -36.8485, lng: 174.7633 },
-        { label: 'Bay of Islands, New Zealand', lat: -35.2, lng: 174.1 },
-        { label: 'Christchurch, New Zealand', lat: -43.532, lng: 172.6306 },
-        { label: 'Fiordland, New Zealand', lat: -44.6, lng: 167.9 },
-        { label: 'Franz Josef, New Zealand', lat: -43.4, lng: 170.2 },
-        { label: 'Hamilton, New Zealand', lat: -37.787, lng: 175.2793 },
-        { label: 'Nelson, New Zealand', lat: -41.2706, lng: 173.284 },
-        { label: 'Queenstown, New Zealand', lat: -45.0312, lng: 168.6626 },
-        { label: 'Rotorua, New Zealand', lat: -38.1368, lng: 176.2497 },
-        { label: 'Waitomo, New Zealand', lat: -38.2607, lng: 175.1102 },
-        { label: 'Wellington, New Zealand', lat: -41.3, lng: 174.8 }
-      ],
-      locationOptions: [],
-      locationLookup: {},
+      locations: {
+        'Wellington, New Zealand': { lat: -41.3, lng: 174.8 },
+        'Hamilton, New Zealand': { lat: -37.7870, lng: 175.2793 },
+        'Auckland, New Zealand': { lat: -36.8485, lng: 174.7633 },
+        'Christchurch, New Zealand': { lat: -43.5320, lng: 172.6306 }
+      },
       savedItineraries: [],
       featuredAttractions: [],
       fallbackFeaturedAttractions: [
         {
-          id: 'AKL_SKY_TOWER',
-          name: 'Sky Tower',
-                  description: "Panoramic city views from New Zealand's tallest tower.",
-          category: 'urban',
-          rating: 4.7,
-          price_range: [35, 85],
-          image: '/images/skyline-gondola.webp',
-          region: 'Auckland',
-          location: { lat: -36.8485, lng: 174.7633 }
-        },
-        {
-          id: 'WLG_TE_PAPA',
-          name: 'Te Papa Museum',
-          description: "Interactive national museum exploring culture and history.",
-          category: 'cultural',
-          rating: 4.6,
-          price_range: [0, 40],
-          image: '/images/milford-sound.webp',
-          region: 'Wellington',
-          location: { lat: -41.2905, lng: 174.7821 }
-        },
-        {
-          id: 'ROT_TE_PUIA',
-          name: 'Te Puia Geothermal Valley',
-          description: "Pohutu geyser eruptions and cultural experiences.",
+          id: '001',
+          name: 'Milford Sound',
+          description: 'Famous fiord in Fiordland National Park',
           category: 'natural',
-          rating: 4.5,
-          price_range: [110, 210],
-          image: '/images/skyline-gondola.webp',
-          region: 'Rotorua',
-          location: { lat: -38.144, lng: 176.2502 }
+          rating: 4.8,
+          price_range: [150, 320],
+          image: '/images/milford-sound.webp'
         },
         {
-          id: 'CHC_BOTANIC',
-          name: 'Christchurch Botanic Gardens',
-          description: "Riverside gardens and conservatories in the city centre.",
-          category: 'natural',
-          rating: 4.7,
-          price_range: [0, 20],
-          image: '/images/milford-sound.webp',
-          region: 'Christchurch',
-          location: { lat: -43.5309, lng: 172.6271 }
-        },
-        {
-          id: 'ZQN_SKYLINE',
+          id: '002',
           name: 'Queenstown Skyline Gondola',
-          description: "Gondola ride with luge tracks and mountain vistas.",
+          description: 'Scenic gondola ride',
           category: 'adventure',
           rating: 4.6,
-          price_range: [95, 180],
-          image: '/images/skyline-gondola.webp',
-          region: 'Queenstown',
-          location: { lat: -45.0312, lng: 168.6626 }
-        },
-        {
-          id: 'WKO_HOBBITON',
-          name: 'Hobbiton Movie Set',
-          description: "Guided tour through the Shire film set and Green Dragon Inn.",
-          category: 'cultural',
-          rating: 4.8,
-          price_range: [150, 260],
-          image: '/images/milford-sound.webp',
-          region: 'Waikato',
-          location: { lat: -37.8722, lng: 175.6823 }
+          price_range: [80, 220],
+          image: '/images/skyline-gondola.webp'
         }
       ],
       fallbackAttractionImages: {
-        'AKL_SKY_TOWER': '/images/skyline-gondola.webp',
-        'WLG_TE_PAPA': '/images/milford-sound.webp',
-        'ROT_TE_PUIA': '/images/skyline-gondola.webp',
-        'CHC_BOTANIC': '/images/milford-sound.webp',
-        'ZQN_SKYLINE': '/images/skyline-gondola.webp',
-        'WKO_HOBBITON': '/images/milford-sound.webp'
+        '001': '/images/milford-sound.webp',
+        '002': '/images/skyline-gondola.webp'
       }
     }
   },
   computed: {
     isLoggedIn() {
-      return !!this.authState.token
+      const token = localStorage.getItem('token')
+      return !!(token && token.length > 0)
     },
     userName() {
       return localStorage.getItem('userName') || 'User'
@@ -435,139 +370,36 @@ export default {
     }
   },
   async mounted() {
-    this.mergeLocationOptions(this.defaultLocationOptions, true)
     try {
       await Promise.all([
         this.loadUserPreferences(),
         this.fetchFeaturedAttractions()
       ])
-      this.updateLocation()
     } catch (error) {
       console.error('Error during component initialization:', error)
       this.error = 'Failed to initialize the page. Please try refreshing.'
       this.featuredAttractions = this.fallbackFeaturedAttractions.map(this.normalizeAttraction)
-      this.mergeLocationOptions(this.extractLocationsFromAttractions(this.fallbackFeaturedAttractions))
     }
   },
   beforeUnmount() {
-    window.removeEventListener('auth-changed', this.syncAuthState)
-    window.removeEventListener('storage', this.syncAuthState)
     if (this.map) {
       this.map.remove()
       this.map = null
     }
   },
   methods: {
-    mergeLocationOptions(options, reset = false) {
-      const newLookup = reset ? {} : { ...this.locationLookup }
-      const newList = reset ? [] : [...this.locationOptions]
-
-      if (Array.isArray(options)) {
-        options.forEach(option => {
-          if (!option) {
-            return
-          }
-          const label = String(option.label || option.address || '').trim()
-          const lat = Number(option.lat ?? option.latitude)
-          const lng = Number(option.lng ?? option.longitude)
-          if (!label || Number.isNaN(lat) || Number.isNaN(lng)) {
-            return
-          }
-          if (!newLookup[label]) {
-            newLookup[label] = { lat, lng }
-            newList.push({ label, lat, lng })
-          }
-        })
-      }
-
-      if (!newList.length) {
-        return
-      }
-
-      newList.sort((a, b) => a.label.localeCompare(b.label))
-      this.locationLookup = newLookup
-      this.locationOptions = newList
-
-      const current = newLookup[this.location.address]
-      if (current) {
-        this.location.lat = current.lat
-        this.location.lng = current.lng
-      } else {
-        const first = newList[0]
-        this.location.address = first.label
-        this.location.lat = first.lat
-        this.location.lng = first.lng
-      }
-    },
-
-    extractLocationsFromAttractions(attractions = []) {
-      if (!Array.isArray(attractions)) {
-        return []
-      }
-      return attractions
-        .map(item => {
-          if (!item) {
-            return null
-          }
-          const location = item.location || {}
-          const lat = Number(location.lat ?? location.latitude)
-          const lng = Number(location.lng ?? location.longitude)
-          if (Number.isNaN(lat) || Number.isNaN(lng)) {
-            return null
-          }
-          const region = (item.region || '').toString().trim()
-          const labelBase = region || item.name
-          if (!labelBase) {
-            return null
-          }
-          return { label: `${labelBase}, New Zealand`, lat, lng }
-        })
-        .filter(Boolean)
-    },
-
-    extractLocationsFromItinerary(days = []) {
-      if (!Array.isArray(days)) {
-        return []
-      }
-      const attractions = []
-      days.forEach(day => {
-        (day?.segments || []).forEach(segment => {
-          const attraction = segment?.attraction
-          if (!attraction) {
-            return
-          }
-          attractions.push({
-            name: attraction.name,
-            region: attraction.region || day?.region || '',
-            location: attraction.location
-          })
-        })
-      })
-      return this.extractLocationsFromAttractions(attractions)
-    },
-
-    syncAuthState() {
-      this.authState = {
-        token: localStorage.getItem('token') || '',
-        name: localStorage.getItem('userName') || '',
-        email: localStorage.getItem('userEmail') || ''
-      }
-    },
-
     async fetchFeaturedAttractions() {
       try {
-        const response = await attractionsAPI.getAll({ limit: 24 })
+        const response = await attractionsAPI.getAll({ limit: 6 })
         const payload = Array.isArray(response.data) ? response.data : []
         if (payload.length) {
           this.featuredAttractions = payload.map(item => this.normalizeAttraction(item))
-          this.mergeLocationOptions(this.extractLocationsFromAttractions(payload))
           return
         }
       } catch (error) {
         console.error('Failed to load attractions', error)
       }
       this.featuredAttractions = this.fallbackFeaturedAttractions.map(item => this.normalizeAttraction(item))
-      this.mergeLocationOptions(this.extractLocationsFromAttractions(this.fallbackFeaturedAttractions))
     },
 
     normalizeAttraction(attraction) {
@@ -646,13 +478,6 @@ export default {
         this.itinerary = data.days || []
         this.summary = data.summary || null
         this.weatherInfo = data.weather || null
-        const dynamicLocations = [
-          ...this.extractLocationsFromAttractions(this.recommendations),
-          ...this.extractLocationsFromItinerary(this.itinerary)
-        ]
-        if (dynamicLocations.length) {
-          this.mergeLocationOptions(dynamicLocations)
-        }
 
         if (!this.itinerary.length) {
           const contextMessage = typeof data.context === 'string'
@@ -735,7 +560,6 @@ export default {
       if (saved) {
         this.preferences = { ...this.preferences, ...JSON.parse(saved) }
       }
-      this.updateLocation()
     },
 
     async initMap() {
@@ -762,10 +586,6 @@ export default {
         center: [centerLat, centerLng],
         zoom: 8,
         attributionControl: true
-      })
-
-      this.map.whenReady(() => {
-        requestAnimationFrame(() => this.map.invalidateSize())
       })
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -824,31 +644,31 @@ export default {
         this.map.fitBounds(bounds, { padding: [20, 20] })
       }
 
-      requestAnimationFrame(() => this.map.invalidateSize())
+      this.map.invalidateSize()
       this.mapInitialized = true
     },
 
     formatDate(dateString) {
       if (!dateString) return 'N/A'
       const date = new Date(dateString)
-      return date.toLocaleDateString('en-NZ', { month: 'short', day: 'numeric', year: 'numeric' })
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     },
 
     formatTime(dateString) {
       if (!dateString) return 'N/A'
       const date = new Date(dateString)
-      return date.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })
+      return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
     },
 
     formatTravel(travel) {
       if (!travel || travel.distance_km == null) {
-        return 'N/A'
+        return '猸?
       }
       return `${travel.distance_km} km - ${travel.duration_minutes} min`
     },
 
     updateLocation() {
-      const selectedLocation = this.locationLookup[this.location.address]
+      const selectedLocation = this.locations[this.location.address]
       if (selectedLocation) {
         this.location.lat = selectedLocation.lat
         this.location.lng = selectedLocation.lng
@@ -869,18 +689,6 @@ export default {
 
 
 <style scoped>
-.map-wrapper {
-  height: 320px;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-#map {
-  width: 100%;
-  height: 100%;
-}
-
-
 .card {
   border-radius: 8px;
 }
@@ -903,11 +711,6 @@ export default {
   border: none;
 }
 </style>
-
-
-
-
-
 
 
 

@@ -43,13 +43,16 @@ class HybridRecommender:
         # Apply distance filter (default 50km if not specified)
         max_distance = preferences.get('max_travel_distance', 50)
         if current_location and max_distance:
-            available_attractions = self._filter_by_distance(
+            filtered = self._filter_by_distance(
                 available_attractions, current_location, max_distance
             )
-            logger.info(f"After distance filtering ({max_distance}km): {len(available_attractions)} attractions")
-
+            logger.info(f"After distance filtering ({max_distance}km): {len(filtered)} attractions")
+            if filtered:
+                available_attractions = filtered
+            else:
+                logger.info("No attractions found within %.1f km; falling back to broader list", max_distance)
         if not available_attractions:
-            logger.warning(f"No attractions found within {max_distance}km of destination")
+            logger.warning("No attractions available after distance fallback")
             return []
 
         # Calculate scores for all attractions within distance
@@ -57,7 +60,7 @@ class HybridRecommender:
         
         for attraction in available_attractions:
             base_score = self._calculate_base_score(attraction, preferences, current_location)
-            if base_score > 0.2:  # Lower threshold for more variety
+            if base_score >= 0.1:  # Lower threshold for more variety
                 matched_attractions.append((str(attraction['id']), base_score))
 
         # Sort and return top k results

@@ -68,7 +68,8 @@ export default {
           localStorage.setItem('userEmail', this.email)
         }
         alert('Login successful!')
-        this.$router.push('/') 
+        window.dispatchEvent(new Event('auth-changed'))
+        this.$router.push({ name: 'Home' })
 
       } catch (error) {
         console.error(error)

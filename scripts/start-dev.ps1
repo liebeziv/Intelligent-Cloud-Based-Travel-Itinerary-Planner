@@ -4,7 +4,8 @@ Write-Host " Starting development services..." -ForegroundColor Green
 
 
 Write-Host " Starting databases..." -ForegroundColor Yellow
-docker-compose up -d mysql mongo redis
+# For local development we use Mongo and Redis; MySQL is not used in this project
+docker-compose up -d mongo redis
 
 Write-Host " Waiting for databases..." -ForegroundColor Yellow
 Start-Sleep -Seconds 15
@@ -18,4 +19,4 @@ Write-Host "API Docs: http://localhost:8000/docs" -ForegroundColor White
 Write-Host ""
 Write-Host "To start applications:" -ForegroundColor Yellow
 Write-Host "Frontend: cd frontend && npm run dev" -ForegroundColor White
-Write-Host "Backend: cd backend && uvicorn app.main:app --reload" -ForegroundColor White
+Write-Host "Backend: uvicorn app.main:app --reload" -ForegroundColor White

@@ -16,10 +16,18 @@ recommendation_service = RecommendationService()
 async def init_recommendation_service():
     if not recommendation_service.is_initialized:
         try:
-            await recommendation_service.initialize(SAMPLE_NZ_ATTRACTIONS)
-            logger.info("Recommendation service initialized with sample data")
+            # Try to load configured open-data sources first, then fall back to sample data
+            from ...services.open_data_service import load_default_sources
+            open_data = load_default_sources()
+            if open_data:
+                await recommendation_service.initialize(open_data)
+                logger.info(f"Recommendation service initialized with {len(open_data)} open-data attractions")
+            else:
+                from ...data.sample_attractions import SAMPLE_NZ_ATTRACTIONS
+                await recommendation_service.initialize(SAMPLE_NZ_ATTRACTIONS)
+                logger.info("Recommendation service initialized with sample data")
         except Exception as e:
-            logger.error(f"Failed to initialize recommendation service: {e}")
+            logger.error(f"Failed during recommendation service initialization: {e}")
             raise HTTPException(status_code=500, detail="Failed to initialize recommendation service")
 
 async def get_recommendation_service() -> RecommendationService:

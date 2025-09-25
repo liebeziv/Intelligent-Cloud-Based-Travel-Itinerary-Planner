@@ -1,198 +1,67 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudWatch monitoring and alarms for the Intelligent Travel Planner workload.
+Description: CloudWatch monitoring resources for Travel Planner (SNS topic + dashboard + basic alarms)
 
 Parameters:
   AlarmEmail:
     Type: String
-    Default: "sc1040@students.waikato.ac.nz"
-    Description: Email address subscribed to CloudWatch alarms
-    AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+    Default: ""
+    Description: Optional email to subscribe for alarms (leave blank to skip subscription)
+  DynamoDBUsersTableName:
+    Type: String
+    Default: ""
+    Description: Optional users DynamoDB table name (leave blank to skip users alarm)
+  DynamoDBItinerariesTableName:
+    Type: String
+    Default: ""
+    Description: Optional itineraries DynamoDB table name (leave blank to skip itineraries alarm)
+
+Conditions:
+  HasAlarmEmail: !Not [ !Equals [ !Ref AlarmEmail, "" ] ]
+  HasDDBUsersTable: !Not [ !Equals [ !Ref DynamoDBUsersTableName, "" ] ]
+  HasDDBItinerariesTable: !Not [ !Equals [ !Ref DynamoDBItinerariesTableName, "" ] ]
 
 Resources:
-  FrontendLogGroup:
-    Type: AWS::Logs::LogGroup
+  MonitoringTopic:
+    Type: AWS::SNS::Topic
     Properties:
-      LogGroupName: !Sub "/aws/cloudfront/trip-planner-frontend-${AWS::AccountId}"
-      RetentionInDays: 14
-      Tags:
-        - Key: Project
-          Value: trip-planner
-        - Key: Service
-          Value: frontend
-        - Key: Environment
-          Value: production
+      TopicName: travel-planner-monitoring-topic
 
-  TripPlannerDashboard:
+  AlarmEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlarmEmail
+    Properties:
+      TopicArn: !Ref MonitoringTopic
+      Protocol: email
+      Endpoint: !Ref AlarmEmail
+
+  Dashboard:
     Type: AWS::CloudWatch::Dashboard
     Properties:
-      DashboardName: !Sub "trip-planner-dashboard-${AWS::AccountId}"
-      DashboardBody:
-        Fn::Sub:
-          - |
+      DashboardName: !Sub "travel-planner-dashboard-${AWS::AccountId}"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
             {
-              "widgets": [
-                {
-                  "type": "metric",
-                  "x": 0,
-                  "y": 0,
-                  "width": 12,
-                  "height": 6,
-                  "properties": {
-                    "metrics": [
-                      [ "AWS/EC2", "CPUUtilization", "AutoScalingGroupName", "${AutoScalingGroupName}" ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "title": "Backend CPU Utilization",
-                    "period": 300
-                  }
-                },
-                {
-                  "type": "metric",
-                  "x": 12,
-                  "y": 0,
-                  "width": 12,
-                  "height": 6,
-                  "properties": {
-                    "metrics": [
-                      [ "AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${AlbFullName}" ],
-                      [ ".", "TargetResponseTime", ".", "." ],
-                      [ ".", "HTTPCode_Target_5XX_Count", ".", "." ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "title": "Load Balancer Health",
-                    "period": 300
-                  }
-                },
-                {
-                  "type": "metric",
-                  "x": 0,
-                  "y": 6,
-                  "width": 12,
-                  "height": 6,
-                  "properties": {
-                    "metrics": [
-                      [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${UsersTableName}" ],
-                      [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${ItinerariesTableName}" ],
-                      [ ".", "ThrottledRequests", ".", "." ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "title": "DynamoDB Usage",
-                    "period": 300
-                  }
-                },
-                {
-                  "type": "metric",
-                  "x": 12,
-                  "y": 6,
-                  "width": 12,
-                  "height": 6,
-                  "properties": {
-                    "metrics": [
-                      [ "AWS/S3", "BucketSizeBytes", "BucketName", "${AssetsBucketName}", "StorageType", "StandardStorage" ],
-                      [ ".", "NumberOfObjects", ".", ".", ".", "." ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "title": "Assets Bucket Storage",
-                    "period": 86400
-                  }
-                },
-                {
-                  "type": "metric",
-                  "x": 0,
-                  "y": 12,
-                  "width": 24,
-                  "height": 6,
-                  "properties": {
-                    "metrics": [
-                      [ "AWS/SNS", "NumberOfMessagesPublished", "TopicName", "${NotificationsTopicName}" ],
-                      [ ".", "NumberOfNotificationsFailed", ".", "." ]
-                    ],
-                    "view": "timeSeries",
-                    "stacked": false,
-                    "region": "${AWS::Region}",
-                    "title": "User Notifications",
-                    "period": 300
-                  }
-                }
-              ]
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 3,
+              "properties": {
+                "markdown": "# Travel Planner - Monitoring Dashboard\nThis dashboard is a starting point. Add metric widgets for ELB, EC2, DynamoDB and S3 as needed."
+              }
             }
-          - AutoScalingGroupName: !ImportValue trip-planner-backend-AutoScalingGroupName
-            AlbFullName: !ImportValue trip-planner-backend-AlbFullName
-            UsersTableName: !ImportValue trip-planner-dynamodb-users-table-name
-            ItinerariesTableName: !ImportValue trip-planner-dynamodb-itineraries-table-name
-            AssetsBucketName: !ImportValue trip-planner-assets-bucket-name
-            NotificationsTopicName: !Select [5, !Split(':', !ImportValue trip-planner-notifications-topic-arn)]
-  HighCPUAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "trip-planner-high-cpu-${AWS::AccountId}"
-      AlarmDescription: "High CPU utilization on backend Auto Scaling group"
-      MetricName: CPUUtilization
-      Namespace: AWS/EC2
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: 80
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: AutoScalingGroupName
-          Value: !ImportValue trip-planner-backend-AutoScalingGroupName
-      AlarmActions:
-        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
-      OKActions:
-        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
-
-  HighResponseTimeAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "trip-planner-high-response-time-${AWS::AccountId}"
-      AlarmDescription: "High response time on application load balancer"
-      MetricName: TargetResponseTime
-      Namespace: AWS/ApplicationELB
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: 5
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: LoadBalancer
-          Value: !ImportValue trip-planner-backend-AlbFullName
-      AlarmActions:
-        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
-
-  HighErrorRateAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "trip-planner-high-error-rate-${AWS::AccountId}"
-      AlarmDescription: "5XX error count on target group exceeded threshold"
-      MetricName: HTTPCode_Target_5XX_Count
-      Namespace: AWS/ApplicationELB
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: 10
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: LoadBalancer
-          Value: !ImportValue trip-planner-backend-AlbFullName
-      AlarmActions:
-        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
+          ]
+        }
 
   DynamoDBUsersThrottlingAlarm:
+    Condition: HasDDBUsersTable
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub "trip-planner-dynamodb-users-throttling-${AWS::AccountId}"
       AlarmDescription: "DynamoDB throttling detected on users table"
-      MetricName: ThrottledRequests
       Namespace: AWS/DynamoDB
+      MetricName: ThrottledRequests
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
@@ -200,17 +69,18 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: TableName
-          Value: !ImportValue trip-planner-dynamodb-users-table-name
+          Value: !If [ HasDDBUsersTable, !Ref DynamoDBUsersTableName, "" ]
       AlarmActions:
-        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
+        - !Ref MonitoringTopic
 
   DynamoDBItinerariesThrottlingAlarm:
+    Condition: HasDDBItinerariesTable
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub "trip-planner-dynamodb-itineraries-throttling-${AWS::AccountId}"
       AlarmDescription: "DynamoDB throttling detected on itineraries table"
-      MetricName: ThrottledRequests
       Namespace: AWS/DynamoDB
+      MetricName: ThrottledRequests
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
@@ -218,106 +88,36 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: TableName
-          Value: !ImportValue trip-planner-dynamodb-itineraries-table-name
+          Value: !If [ HasDDBItinerariesTable, !Ref DynamoDBItinerariesTableName, "" ]
       AlarmActions:
-        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
+        - !Ref MonitoringTopic
 
-  S3ErrorAlarm:
+  CloudFront5xxAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: !Sub "trip-planner-s3-errors-${AWS::AccountId}"
-      AlarmDescription: "4XX errors detected on assets bucket"
-      MetricName: 4xxErrors
-      Namespace: AWS/S3
-      Statistic: Sum
+      AlarmName: !Sub "trip-planner-cloudfront-5xx-${AWS::AccountId}"
+      AlarmDescription: "CloudFront 5XX error rate exceeded threshold"
+      Namespace: AWS/CloudFront
+      MetricName: 5xxErrorRate
+      Statistic: Average
       Period: 300
-      EvaluationPeriods: 1
-      Threshold: 5
+      EvaluationPeriods: 2
+      Threshold: 1
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
-        - Name: BucketName
-          Value: !ImportValue trip-planner-assets-bucket-name
-        - Name: FilterId
-          Value: EntireBucket
+        - Name: DistributionId
+          Value: !ImportValue travel-planner-frontend-cf-DistributionId
       AlarmActions:
-        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
-
-  SNSPublishErrorAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub "trip-planner-sns-publish-errors-${AWS::AccountId}"
-      AlarmDescription: "SNS publish failures detected on notifications topic"
-      MetricName: NumberOfNotificationsFailed
-      Namespace: AWS/SNS
-      Statistic: Sum
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 5
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: TopicName
-          Value: !Select [5, !Split(':', !ImportValue trip-planner-notifications-topic-arn)]
-      AlarmActions:
-        - !ImportValue trip-planner-cloudwatch-alarms-topic-arn
-
-  CloudWatchAlarmsSubscription:
-    Type: AWS::SNS::Subscription
-    Properties:
-      TopicArn: !ImportValue trip-planner-cloudwatch-alarms-topic-arn
-      Protocol: email
-      Endpoint: !Ref AlarmEmail
-
-  CloudWatchAgentRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "trip-planner-cloudwatch-agent-${AWS::AccountId}"
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
-      Policies:
-        - PolicyName: CloudWatchLogsPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - logs:DescribeLogStreams
-                Resource: "*"
-
-  ErrorLogsQuery:
-    Type: AWS::CloudWatch::QueryDefinition
-    Properties:
-      Name: "Trip Planner Error Logs"
-      LogGroupNames:
-        - !ImportValue trip-planner-backend-LogGroupName
-      QueryString: |
-        fields @timestamp, @message
-        | filter @message like /ERROR/
-        | sort @timestamp desc
-        | limit 100
+        - !Ref MonitoringTopic
 
 Outputs:
+  MonitoringTopicArn:
+    Value: !Ref MonitoringTopic
+    Export:
+      Name: travel-planner-monitoring-topic-arn
+
   DashboardURL:
     Description: CloudWatch dashboard URL
-    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${TripPlannerDashboard}"
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=travel-planner-dashboard-${AWS::AccountId}"
     Export:
-      Name: !Sub "${AWS::StackName}-DashboardURL"
-  FrontendLogGroupName:
-    Description: Frontend log group name
-    Value: !Ref FrontendLogGroup
-    Export:
-      Name: !Sub "${AWS::StackName}-FrontendLogGroup"
-  CloudWatchAgentRoleArn:
-    Description: CloudWatch agent role ARN
-    Value: !GetAtt CloudWatchAgentRole.Arn
-    Export:
-      Name: !Sub "${AWS::StackName}-CloudWatchAgentRole"
+      Name: travel-planner-monitoring-dashboard-url

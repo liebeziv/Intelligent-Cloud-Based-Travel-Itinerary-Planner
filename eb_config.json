@@ -456,11 +456,7 @@
                     "OptionName": "XRayEnabled",
                     "Value": "false"
                 },
-                {
-                    "Namespace": "aws:rds:dbinstance",
-                    "OptionName": "HasCoupledDatabase",
-                    "Value": "false"
-                }
+                
             ]
         }
     ]

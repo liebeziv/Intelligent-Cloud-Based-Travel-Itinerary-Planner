@@ -1,32 +1,17 @@
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from .models import Base
+import boto3
+from boto3.dynamodb.conditions import Key
 
-# 本地开发使用SQLite
-DATABASE_URL = "sqlite:///./travel_planner_local.db"
+dynamodb = boto3.resource('dynamodb')
 
-# Create Engine - SQLite配置
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},  # SQLite特定配置
-    echo=True  # 开发时显示SQL语句
-)
+def get_table(table_name: str):
+    """获取DynamoDB表实例"""
+    return dynamodb.Table(table_name)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def init_db():
-    """初始化数据库表"""
-    Base.metadata.create_all(bind=engine)
-    print("Database tables created successfully")
-
-def get_db():
-    """数据库会话依赖"""
-    db = SessionLocal()
-    try:
-        yield db
-    except Exception as e:
-        db.rollback()
-        raise
-    finally:
-        db.close()
+def query_items(table_name: str, key_name: str, key_value: str):
+    """查询DynamoDB表项"""
+    table = get_table(table_name)
+    response = table.query(
+        KeyConditionExpression=Key(key_name).eq(key_value)
+    )
+    return response.get('Items', [])

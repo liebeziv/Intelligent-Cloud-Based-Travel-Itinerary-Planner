@@ -35,16 +35,15 @@ Vite              // Build tool
 ```python
 Python 3.9+       // Backend development language
 FastAPI           // Modern high-performance web framework
-SQLAlchemy        // Python ORM
-PyMongo           // MongoDB driver
 Uvicorn           // ASGI server
 ```
 
-### Databases
-```sql
-MySQL 8.0         // Primary database (AWS RDS)
-MongoDB           // Document database (user preferences and recommendation data)
-Redis             // Cache database (AWS ElastiCache)
+Note: DynamoDB is the primary persistence layer. Legacy SQLAlchemy models were archived to `archive/models_sqlalchemy.py` for reference only and are not used at runtime.
+
+### Data Storage
+```text
+DynamoDB         // Primary database for user data and itineraries
+S3               // Object storage for assets and static files
 ```
 
 ### Development Tools
