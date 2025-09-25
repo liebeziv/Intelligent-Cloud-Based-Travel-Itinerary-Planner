@@ -2,6 +2,18 @@
 * **Account:** `849354442724`
 * **Region:** `us-east-1`
 
+
+# Elastic Beanstalk Environment
+* **Application Name:** `travel-planner-backend`
+* **Environment Name:** `travel-planner-prod`
+* **Platform:** `Python 3.9 running on 64bit Amazon Linux 2023`
+* **Instance Type:** `t3.micro`
+* **Deployment Status:** `deployed`
+* **Environment Type:** `SingleInstance` (Load Balanced)
+```
+
+---
+
 # S3 + CloudFront
 * **Buckets**
 
@@ -95,7 +107,7 @@ aws cloudformation deploy \
 ### 2. **Log Groups**
 - **Backend Logs**: `/aws/ec2/trip-planner-backend-849354442724`
 - **Frontend Logs**: `/aws/cloudfront/trip-planner-frontend-849354442724`
-- **Retention**: 30 days
+- **Retention**: 7 days (EB default), 30 days (CloudFront)
 
 ### 3. **Basic Alerts**
 - **High CPU Usage** (>80%)
@@ -110,4 +122,14 @@ aws cloudformation deploy \
 | Disk Space | >85% | Email alert |
 | Error Rate | >10 errors | Email alert |
 
+---
+
+# Architecture Summary
+
+## Current Deployment Stack
+```
+Internet → CloudFront → Elastic Beanstalk → DynamoDB
+                    ↓
+                  S3 (Assets)
+```
 ---
