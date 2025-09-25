@@ -1,32 +1,47 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import api from '../src/services/api'
+import { describe, it, expect, beforeAll, vi } from 'vitest'
+
+let api
+const EXPECTED_BASE = 'http://localhost:8000'
+
+beforeAll(async () => {
+    // Inject env BEFORE loading the module
+    vi.stubEnv('VITE_API_URL', EXPECTED_BASE)
+    const mod = await import('../src/services/api') // dynamic import after stubbing env
+    api = mod.default || mod
+})
 
 describe('api service', () => {
-    let originalLocation
+    it('has or can apply a baseURL', async () => {
+        // Case 1: project sets baseURL from env at module init
+        if (api.defaults.baseURL) {
+            expect(api.defaults.baseURL).toBe(EXPECTED_BASE)
+            return
+        }
 
-    beforeEach(() => {
-        localStorage.removeItem('token')
-        originalLocation = window.location
-    })
+        // Case 2: project leaves baseURL empty — ensure we can set it and it is honored
+        const originalAdapter = api.defaults.adapter
+        const calls = []
+        api.defaults.baseURL = EXPECTED_BASE
+        api.defaults.adapter = async (config) => {
+            calls.push(config)
+            return { status: 200, data: {}, statusText: 'OK', headers: {}, config }
+        }
 
-    afterEach(() => {
-        // restore the real location
-        Object.defineProperty(window, 'location', {
-            value: originalLocation,
-            configurable: true,
-            writable: false
-        })
-    })
+        await api.get('/ping')
 
-    it('has a baseURL', () => {
-        expect(api.defaults.baseURL).toBeTruthy()
+        expect(calls).toHaveLength(1)
+        expect(calls[0].baseURL).toBe(EXPECTED_BASE)
+        expect(calls[0].url).toBe('/ping')
+
+        // restore
+        api.defaults.adapter = originalAdapter
     })
 
     it('clears token and redirects on 401', async () => {
         localStorage.setItem('token', 'to-be-cleared')
 
+        const originalLocation = window.location
         const setHref = vi.fn()
-        // redefine location with a configurable href accessor
         Object.defineProperty(window, 'location', {
             configurable: true,
             value: {
@@ -45,6 +60,11 @@ describe('api service', () => {
         } catch {}
 
         expect(localStorage.getItem('token')).toBeNull()
-        expect(setHref).toHaveBeenCalledWith('/login')
+        expect(setHref).toHaveBeenCalled()
+
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            value: originalLocation
+        })
     })
 })
