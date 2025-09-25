@@ -1,5 +1,16 @@
 import datetime
 import logging
+from decimal import Decimal
+import math
+
+try:
+    import numpy as np
+    NUMPY_FLOAT_TYPES = (np.floating,)
+    NUMPY_INT_TYPES = (np.integer,)
+except Exception:
+    NUMPY_FLOAT_TYPES = ()
+    NUMPY_INT_TYPES = ()
+
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -43,14 +54,21 @@ class ItineraryRepository:
 
         encrypted_payload = self._encryptor.encrypt_dict(plan)
 
-        item = {
+        summary = self._to_dynamo_safe(plan.get("summary", {}))
+        weather = plan.get("weather")
+        item: Dict[str, Any] = {
             "pk": f"USER#{user_id}",
             "sk": f"ITINERARY#{itinerary_id}",
             "itinerary_id": itinerary_id,
             "created_at": plan["saved_at"],
             "encrypted_payload": encrypted_payload,
-            "summary": plan.get("summary", {}),
+            "summary": summary,
         }
+        if weather is not None:
+            item["weather"] = self._to_dynamo_safe(weather)
+
+        safe_item = self._to_dynamo_safe(item)
+        logger.debug("Prepared DynamoDB itinerary item: %s", safe_item)
 
         table = self._table
         if table is None:
@@ -59,10 +77,13 @@ class ItineraryRepository:
             return itinerary_id
 
         try:
-            table.put_item(Item=item)
+            table.put_item(Item=safe_item)
             self._publish_metric('ItinerariesSaved')
         except ClientError as exc:
             logger.error("Failed to store itinerary in DynamoDB: %s", exc)
+            self._fallback_store.setdefault(user_id, []).append(plan)
+        except Exception as exc:  # catch serialization issues (e.g. float)
+            logger.error("Unexpected error storing itinerary; item=%s, error=%s", safe_item, exc)
             self._fallback_store.setdefault(user_id, []).append(plan)
         return itinerary_id
 
@@ -104,7 +125,24 @@ class ItineraryRepository:
         except Exception as exc:
             logger.debug('Failed to publish CloudWatch metric %s: %s', metric_name, exc)
 
-
+    def _to_dynamo_safe(self, value):
+        if isinstance(value, Decimal):
+            return value
+        if isinstance(value, bool):
+            return value
+        if NUMPY_FLOAT_TYPES and isinstance(value, NUMPY_FLOAT_TYPES):
+            return Decimal(str(float(value)))
+        if NUMPY_INT_TYPES and isinstance(value, NUMPY_INT_TYPES):
+            return int(value)
+        if isinstance(value, float):
+            if math.isfinite(value):
+                return Decimal(str(value))
+            return None
+        if isinstance(value, dict):
+            return {k: self._to_dynamo_safe(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [self._to_dynamo_safe(v) for v in value]
+        return value
 
     def delete_itinerary(self, user_id: str, itinerary_id: str) -> bool:
         table = self._table
@@ -160,4 +198,3 @@ class ItineraryRepository:
         return count
 
 itinerary_repository = ItineraryRepository()
-

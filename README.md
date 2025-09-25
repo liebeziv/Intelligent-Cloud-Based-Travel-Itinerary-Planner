@@ -20,7 +20,7 @@ The Intelligent Cloud-Based Travel Itinerary Planner is an AI-powered travel pla
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Frontend Technology Stack
 ```javascript
@@ -38,7 +38,7 @@ FastAPI           // Modern high-performance web framework
 Uvicorn           // ASGI server
 ```
 
-Note: DynamoDB is the primary persistence layer. Legacy SQLAlchemy models were archived to `archive/models_sqlalchemy.py` for reference only and are not used at runtime.
+Note: DynamoDB is the primary persistence layer. The legacy SQLAlchemy models have been removed from the repository; DynamoDB implementations now power all persistence.
 
 ### Data Storage
 ```text

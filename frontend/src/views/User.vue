@@ -93,40 +93,95 @@
 
 <script>
 import { itineraryAPI } from '../services/api'
+
 export default {
   name: 'User',
   data() {
     return {
       trips: [],
       loading: false,
-      error: null
+      error: null,
+      auth: {
+        token: localStorage.getItem('token') || '',
+        name: localStorage.getItem('userName') || '',
+        email: localStorage.getItem('userEmail') || '',
+        id: localStorage.getItem('userId') || 'guest'
+      }
     }
   },
   computed: {
     isLoggedIn() {
-      const token = localStorage.getItem('token')
-      return !!token
+      return !!this.auth.token
     },
     userName() {
-      return localStorage.getItem('userName') || ''
+      return this.auth.name || this.auth.email || ''
     },
     userEmail() {
-      return localStorage.getItem('userEmail') || ''
+      return this.auth.email || ''
     },
     initials() {
-      const name = this.userName || this.userEmail || 'U'
-      return name.split(' ').map(p => p[0]).join('').slice(0,2).toUpperCase()
+      const source = this.userName || this.userEmail || 'U'
+      return source.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()
     },
     userId() {
-      return localStorage.getItem('userId') || 'guest'
+      return this.auth.id || 'guest'
     }
   },
   mounted() {
+    this.syncAuthState()
     this.refreshTrips()
+    window.addEventListener('auth-changed', this.handleAuthChange)
+    window.addEventListener('storage', this.handleAuthChange)
+  },
+  beforeUnmount() {
+    window.removeEventListener('auth-changed', this.handleAuthChange)
+    window.removeEventListener('storage', this.handleAuthChange)
   },
   methods: {
+    handleAuthChange() {
+      const previousToken = this.auth.token
+      const previousUserId = this.auth.id
+      this.syncAuthState()
+      if (previousToken !== this.auth.token || previousUserId !== this.auth.id) {
+        this.refreshTrips()
+      }
+    },
+    syncAuthState() {
+      this.auth = {
+        token: localStorage.getItem('token') || '',
+        name: localStorage.getItem('userName') || '',
+        email: localStorage.getItem('userEmail') || '',
+        id: localStorage.getItem('userId') || 'guest'
+      }
+    },
     storageKey() {
-      return `trips_${this.userId}`
+      return 'trips_' + this.userId
+    },
+    normaliseMetadata(metadata) {
+      if (!metadata) {
+        return {}
+      }
+      if (typeof metadata === 'string') {
+        try {
+          return JSON.parse(metadata)
+        } catch (err) {
+          console.warn('Failed to parse itinerary metadata', err)
+          return {}
+        }
+      }
+      return metadata
+    },
+    extractServerTrips(payload) {
+      if (Array.isArray(payload)) {
+        return payload
+      }
+      if (payload && Array.isArray(payload.items)) {
+        return payload.items
+      }
+      if (payload && Array.isArray(payload.itineraries)) {
+        return payload.itineraries
+      }
+      return []
     },
     async refreshTrips() {
       this.loading = true
@@ -134,7 +189,28 @@ export default {
       try {
         if (this.isLoggedIn) {
           const response = await itineraryAPI.getMine()
-          this.trips = Array.isArray(response.data) ? response.data : []
+          const payload = response?.data ?? response
+          const serverTrips = this.extractServerTrips(payload)
+          this.trips = serverTrips.map(rawTrip => {
+            const metadata = this.normaliseMetadata(rawTrip.metadata)
+            const preferences = rawTrip.preferences || metadata.preferences || {}
+            const location = rawTrip.location || metadata.location || {}
+            const summary = rawTrip.summary || metadata.summary || {}
+            return {
+              ...rawTrip,
+              id: rawTrip.id || rawTrip.itinerary_id,
+              preferences,
+              location,
+              summary
+            }
+          }).sort((a, b) => {
+            const tsA = Date.parse(a.saved_at || a.createdAt || 0)
+            const tsB = Date.parse(b.saved_at || b.createdAt || 0)
+            return tsB - tsA
+          })
+          if (!this.trips.length) {
+            console.info('No server-side trips returned for user', this.userId)
+          }
         } else {
           this.trips = this.loadTripsFromLocal()
         }
@@ -146,12 +222,12 @@ export default {
         this.loading = false
       }
     },
-
     loadTripsFromLocal() {
       try {
         const raw = localStorage.getItem(this.storageKey())
         return raw ? JSON.parse(raw) : []
       } catch (e) {
+        console.warn('Failed to parse local trips', e)
         return []
       }
     },
@@ -190,7 +266,6 @@ export default {
       this.saveTrips()
     },
     reopenTrip(trip) {
-      // Store selected trip preferences and navigate home
       if (trip?.preferences) {
         localStorage.setItem('userPreferences', JSON.stringify(trip.preferences))
       }
@@ -203,5 +278,3 @@ export default {
 <style scoped>
 .badge { font-weight: 500; }
 </style>
-
-
