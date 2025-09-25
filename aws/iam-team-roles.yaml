@@ -15,6 +15,14 @@ Parameters:
     Type: String
     Default: "travel-planner-backend-role-849354442724"
     Description: EC2 instance role name used by the backend (for iam:PassRole constraint).
+  EBApplicationName:
+    Type: String
+    Default: "travel-planner-backend"
+    Description: Elastic Beanstalk application name.
+  EBEnvironmentName:
+    Type: String
+    Default: "travel-planner-prod"
+    Description: Elastic Beanstalk environment name.
   FrontendBucketName:
     Type: String
     Default: "travel-planner-frontend-849354442724"
@@ -42,7 +50,7 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # Limit to the specified backend stack
+              # Limit to the specified backend stack and EB-related stacks
               - Effect: Allow
                 Action:
                   - cloudformation:UpdateStack
@@ -54,14 +62,55 @@ Resources:
                   - cloudformation:DescribeStackEvents
                   - cloudformation:ListStackResources
                   - cloudformation:ValidateTemplate
-                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${BackendStackName}/*"
+                Resource: 
+                  - !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${BackendStackName}/*"
+                  - !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/awseb-*"
               # Only pass the backend EC2 instance role (needed when CFN updates LT/ASG)
               - Effect: Allow
                 Action: iam:PassRole
                 Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${BackendInstanceRoleName}"
                 Condition:
                   StringEquals: { iam:PassedToService: ec2.amazonaws.com }
-              # Logs read for project log groups (adjust if you use different names)
+              # Elastic Beanstalk permissions for backend deployment
+              - Effect: Allow
+                Action:
+                  - elasticbeanstalk:CreateApplication
+                  - elasticbeanstalk:UpdateApplication
+                  - elasticbeanstalk:DeleteApplication
+                  - elasticbeanstalk:DescribeApplications
+                  - elasticbeanstalk:CreateEnvironment
+                  - elasticbeanstalk:UpdateEnvironment
+                  - elasticbeanstalk:TerminateEnvironment
+                  - elasticbeanstalk:DescribeEnvironments
+                  - elasticbeanstalk:DescribeEnvironmentHealth
+                  - elasticbeanstalk:DescribeEnvironmentResources
+                  - elasticbeanstalk:DescribeConfigurationOptions
+                  - elasticbeanstalk:DescribeConfigurationSettings
+                  - elasticbeanstalk:UpdateConfigurationTemplate
+                  - elasticbeanstalk:CreateConfigurationTemplate
+                  - elasticbeanstalk:DeleteConfigurationTemplate
+                  - elasticbeanstalk:DescribeConfigurationTemplates
+                  - elasticbeanstalk:CreateApplicationVersion
+                  - elasticbeanstalk:UpdateApplicationVersion
+                  - elasticbeanstalk:DeleteApplicationVersion
+                  - elasticbeanstalk:DescribeApplicationVersions
+                  - elasticbeanstalk:DeployApplicationVersion
+                  - elasticbeanstalk:RestartAppServer
+                  - elasticbeanstalk:SwapEnvironmentCNAMEs
+                  - elasticbeanstalk:ListAvailableSolutionStacks
+                  - elasticbeanstalk:DescribeInstancesHealth
+                  - elasticbeanstalk:DescribeEnvironmentManagedActions
+                  - elasticbeanstalk:ApplyEnvironmentManagedAction
+                Resource: "*"
+              # Pass role for Elastic Beanstalk service role
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: 
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-elasticbeanstalk-service-role"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/travel-planner-eb-instance-role-${AWS::AccountId}"
+                Condition:
+                  StringEquals: { iam:PassedToService: elasticbeanstalk.amazonaws.com }
+              # Logs read for project log groups (including EB logs)
               - Effect: Allow
                 Action:
                   - logs:DescribeLogGroups
@@ -71,6 +120,8 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/travel-planner/*"
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/travel-planner/*:log-stream:*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ec2/travel-planner-backend-${AWS::AccountId}"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ec2/travel-planner-backend-${AWS::AccountId}:log-stream:*"
               # DynamoDB access for project tables
               - Effect: Allow
                 Action:
@@ -117,6 +168,9 @@ Resources:
                   - s3:GetBucketLocation
                   - dynamodb:ListTables
                   - sns:ListTopics
+                  - elasticbeanstalk:DescribeApplications
+                  - elasticbeanstalk:DescribeEnvironments
+                  - elasticbeanstalk:DescribeEnvironmentHealth
                   - secretsmanager:ListSecrets
                 Resource: "*"
 
@@ -182,12 +236,29 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # Logs read for project log groups
+              # Logs read for project log groups (including EB logs)
               - Effect: Allow
                 Action: [ "logs:DescribeLogGroups", "logs:DescribeLogStreams", "logs:GetLogEvents", "logs:FilterLogEvents" ]
                 Resource:
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/travel-planner/*"
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/travel-planner/*:log-stream:*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ec2/travel-planner-backend-${AWS::AccountId}"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ec2/travel-planner-backend-${AWS::AccountId}:log-stream:*"
+              # Elastic Beanstalk read-only access
+              - Effect: Allow
+                Action:
+                  - elasticbeanstalk:DescribeApplications
+                  - elasticbeanstalk:DescribeEnvironments
+                  - elasticbeanstalk:DescribeEnvironmentHealth
+                  - elasticbeanstalk:DescribeEnvironmentResources
+                  - elasticbeanstalk:DescribeConfigurationOptions
+                  - elasticbeanstalk:DescribeConfigurationSettings
+                  - elasticbeanstalk:DescribeConfigurationTemplates
+                  - elasticbeanstalk:DescribeApplicationVersions
+                  - elasticbeanstalk:DescribeInstancesHealth
+                  - elasticbeanstalk:DescribeEnvironmentManagedActions
+                  - elasticbeanstalk:ListAvailableSolutionStacks
+                Resource: "*"
               # S3 read access for project buckets
               - Effect: Allow
                 Action: [ "s3:ListBucket", "s3:GetObject" ]

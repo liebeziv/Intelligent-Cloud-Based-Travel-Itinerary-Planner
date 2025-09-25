@@ -48,7 +48,7 @@ You'll **assume** one or more of these roles to do specific tasks. Multiple role
 
 | Role                             | What you can do                                                                 | Typical tasks                                              |
 | -------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `tp-BackendDeployer-<account>`   | Update backend stack; manage DynamoDB tables; pass EC2 role; read logs         | Deploy backend; manage database; scale ASG; check health   |
+| `tp-BackendDeployer-<account>`   | Deploy EB applications; manage DynamoDB tables; pass EB roles; read logs        | Deploy backend; manage database; scale EB; check health    |
 | `tp-FrontendPublisher-<account>` | Write to frontend S3 bucket; CloudFront invalidations                          | Upload new build; purge CDN cache                          |
 | `tp-Observer-<account>`          | Read-only access to all project resources                                      | Monitor system; view logs; check metrics                   |
 | `tp-SecretsAdmin-<account>`      | Manage Secrets in `trip-planner/*` namespace                                    | Create/update app secrets/keys                             |
@@ -67,9 +67,9 @@ You'll **assume** one or more of these roles to do specific tasks. Multiple role
 
 | Role | Console | CLI/CloudShell |
 |------|---------|----------------|
-| **BackendDeployer** | View only | Full DynamoDB, SNS, CloudFormation |
+| **BackendDeployer** | View only | Full Elastic Beanstalk, DynamoDB, SNS, CloudFormation |
 | **FrontendPublisher** | View only | Full S3, CloudFront |
-| **Observer** | View only | Read-only access |
+| **Observer** | View only | Read-only access (including EB) |
 | **SecretsAdmin** | View only | Full Secrets Manager |
 
 ### How to Use CloudShell:
@@ -85,6 +85,12 @@ aws dynamodb list-tables
 # Deploy CloudFormation stack
 aws cloudformation deploy --template-file template.yaml
 
+# Deploy Elastic Beanstalk application
+./deploy-to-eb.sh
+
+# Check EB environment health
+aws elasticbeanstalk describe-environment-health --environment-name travel-planner-prod
+
 # Upload to S3
 aws s3 cp file.txt s3://bucket-name/
 ```
@@ -93,11 +99,12 @@ aws s3 cp file.txt s3://bucket-name/
 
 ####  BackendDeployer Role
 **Permissions:**
-- **CloudFormation**: Update/create/delete `trip-planner-backend` stack only
+- **Elastic Beanstalk**: Full access to deploy, update, and manage EB applications and environments
+- **CloudFormation**: Update/create/delete `trip-planner-backend` and EB-related stacks
 - **DynamoDB**: Full access to `trip-planner-*` tables (create, read, update, delete)
-- **EC2**: Pass role to backend EC2 instances
-- **CloudWatch Logs**: Read project logs (`/trip-planner/*`)
-- **IAM**: Pass role to EC2 service only
+- **EC2**: Pass role to backend EC2 instances (managed by EB)
+- **CloudWatch Logs**: Read project logs (`/trip-planner/*` and `/aws/ec2/travel-planner-backend-*`)
+- **IAM**: Pass role to EB service and EC2 service
 
 ####  FrontendPublisher Role   
 **Permissions:**
@@ -106,13 +113,14 @@ aws s3 cp file.txt s3://bucket-name/
 
 ####  Observer Role
 **Permissions:**
+- **Elastic Beanstalk**: Read-only access to applications, environments, and health status
 - **CloudFormation**: Read-only access to all stacks
 - **CloudWatch**: Read-only access to metrics and logs
 - **DynamoDB**: Read-only access to all tables
 - **S3**: Read-only access to project buckets
 - **SNS**: Read-only access to `*trip-planner*` topics
 - **EC2**: Read-only access to project-tagged instances
-- **CloudWatch Logs**: Read project logs (`/trip-planner/*`)
+- **CloudWatch Logs**: Read project logs (`/trip-planner/*` and `/aws/ec2/travel-planner-backend-*`)
 
 #### SecretsAdmin Role
 **Permissions:**
@@ -123,7 +131,51 @@ aws s3 cp file.txt s3://bucket-name/
 
 ---
 
-## 3) How to use roles — Console & CLI
+## 3) Elastic Beanstalk Operations Guide
+
+### Backend Deployment (BackendDeployer Role)
+```bash
+# Deploy new version
+./deploy-to-eb.sh
+
+# Check environment health
+aws elasticbeanstalk describe-environment-health --environment-name travel-planner-prod
+
+# View application logs
+aws logs describe-log-groups --log-group-name-prefix "/aws/ec2/travel-planner-backend"
+
+# Restart application
+aws elasticbeanstalk restart-app-server --environment-name travel-planner-prod
+
+# Update environment configuration
+aws elasticbeanstalk update-environment --environment-name travel-planner-prod --option-settings Namespace=aws:autoscaling:asg,OptionName=MaxSize,Value=3
+```
+
+### Monitoring (Observer Role)
+```bash
+# List all EB applications
+aws elasticbeanstalk describe-applications
+
+# Check environment status
+aws elasticbeanstalk describe-environments --application-name travel-planner-backend
+
+# View environment health
+aws elasticbeanstalk describe-environment-health --environment-name travel-planner-prod --attribute-names All
+
+# Check instance health
+aws elasticbeanstalk describe-instances-health --environment-name travel-planner-prod --attribute-names All
+```
+
+### Key EB Resources
+- **Application**: `travel-planner-backend`
+- **Environment**: `travel-planner-prod`
+- **Platform**: `Python 3.9 running on 64bit Amazon Linux 2023`
+- **Instance Type**: `t3.micro`
+- **Log Group**: `/aws/ec2/travel-planner-backend-849354442724`
+
+---
+
+## 4) How to use roles — Console & CLI
 
 ### A) Console (Switch Role)
 
