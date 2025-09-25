@@ -48,7 +48,7 @@ Resources:
               "width": 24,
               "height": 3,
               "properties": {
-                "markdown": "# Travel Planner - Monitoring Dashboard\nThis dashboard is a starting point. Add metric widgets for ELB, EC2, DynamoDB and S3 as needed."
+                "markdown": "# Travel Planner - Monitoring Dashboard\nThis dashboard monitors Elastic Beanstalk backend, DynamoDB, CloudFront, and S3 services."
               }
             }
           ]
@@ -107,6 +107,43 @@ Resources:
       Dimensions:
         - Name: DistributionId
           Value: !ImportValue travel-planner-frontend-cf-DistributionId
+      AlarmActions:
+        - !Ref MonitoringTopic
+
+  # Elastic Beanstalk Health Monitoring
+  EBHealthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "trip-planner-eb-health-${AWS::AccountId}"
+      AlarmDescription: "Elastic Beanstalk environment health degraded"
+      Namespace: AWS/ElasticBeanstalk
+      MetricName: EnvironmentHealth
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: EnvironmentName
+          Value: travel-planner-prod
+      AlarmActions:
+        - !Ref MonitoringTopic
+
+  EBInstanceHealthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "trip-planner-eb-instance-health-${AWS::AccountId}"
+      AlarmDescription: "Elastic Beanstalk instance health issues detected"
+      Namespace: AWS/ElasticBeanstalk
+      MetricName: InstanceHealth
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: EnvironmentName
+          Value: travel-planner-prod
       AlarmActions:
         - !Ref MonitoringTopic
 
