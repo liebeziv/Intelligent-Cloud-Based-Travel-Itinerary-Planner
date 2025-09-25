@@ -1,4 +1,4 @@
-param(
+锘縫aram(
     [Parameter(Mandatory)] [string]$Region,
     [Parameter(Mandatory)] [string]$EbApplicationName,
     [Parameter(Mandatory)] [string]$EbEnvironmentName,
@@ -16,9 +16,9 @@ function Write-Stage {
     Write-Host "`n=== $Message ===" -ForegroundColor Cyan
 }
 
-function Assert-AwsCli() {
+function Assert-AwsCli {
     if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
-        throw "AWS CLI 未安装或未加入 PATH。请先安装 https://aws.amazon.com/cli/ 并运行 aws configure。"
+        throw "AWS CLI is not installed or not on PATH. Install from https://aws.amazon.com/cli/ and run aws configure."
     }
 }
 
@@ -29,10 +29,10 @@ function Prepare-BackendZip {
         Remove-Item $ZipPath -Force
     }
 
-    Write-Stage "??????"
+    Write-Stage "Packaging backend"
     $itemsToInclude = @("app", "main.py", "requirements.txt", ".ebextensions", "Procfile") | Where-Object { Test-Path $_ }
     if (-not $itemsToInclude) {
-        throw "δ??? app/ ?? main.py/requirements.txt???????????????"
+        throw "Required backend files (app/, main.py, requirements.txt, etc.) not found."
     }
 
     $pythonCode = @"
@@ -53,10 +53,8 @@ with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.write(item, item.replace(os.sep, "/"))
 "@
     $pythonCode | python - $ZipPath
-    Write-Host "?????? $ZipPath" -ForegroundColor Green
+    Write-Host "Created package $ZipPath" -ForegroundColor Green
 }
-
-
 
 function Deploy-Backend {
     param(
@@ -67,13 +65,13 @@ function Deploy-Backend {
         [string]$EbDeploymentBucket
     )
 
-    Write-Stage "上传后端包到 S3 ($EbDeploymentBucket)"
+    Write-Stage "Uploading backend bundle to S3 ($EbDeploymentBucket)"
     $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
     $s3Key = "$EbApplicationName/$timestamp.zip"
 
     aws s3 cp $ZipPath "s3://$EbDeploymentBucket/$s3Key" --region $Region | Out-Host
 
-    Write-Stage "创建 EB 版本"
+    Write-Stage "Creating EB application version"
     $versionLabel = "v-$timestamp"
     aws elasticbeanstalk create-application-version `
         --application-name $EbApplicationName `
@@ -81,13 +79,13 @@ function Deploy-Backend {
         --source-bundle S3Bucket=$EbDeploymentBucket,S3Key=$s3Key `
         --region $Region | Out-Host
 
-    Write-Stage "更新 EB 环境"
+    Write-Stage "Updating EB environment"
     aws elasticbeanstalk update-environment `
         --environment-name $EbEnvironmentName `
         --version-label $versionLabel `
         --region $Region | Out-Host
 
-    Write-Host "等待环境更新完成..." -ForegroundColor Yellow
+    Write-Host "Waiting for environment to update..." -ForegroundColor Yellow
     aws elasticbeanstalk wait environment-updated `
         --environment-name $EbEnvironmentName `
         --region $Region | Out-Host
@@ -97,13 +95,13 @@ function Deploy-Backend {
         --region $Region `
         --query "Environments[0].CNAME" `
         --output text
-    Write-Host "后端部署完成: http://$envUrl" -ForegroundColor Green
+    Write-Host "Backend deployed: http://$envUrl" -ForegroundColor Green
 }
 
 function Build-Frontend {
     param([string]$FrontendDir)
 
-    Write-Stage "构建前端"
+    Write-Stage "Building frontend"
     Push-Location $FrontendDir
     try {
         if (Test-Path package-lock.json) {
@@ -123,17 +121,17 @@ function Deploy-Frontend {
 
     $distPath = Join-Path $FrontendDir "dist"
     if (-not (Test-Path $distPath)) {
-        throw "未找到 $distPath，请先运行前端构建。"
+        throw "Frontend build output '$distPath' was not found. Run the build step first."
     }
 
-    Write-Stage "同步前端到 S3 ($FrontendBucket)"
+    Write-Stage "Syncing frontend to S3 ($FrontendBucket)"
     aws s3 sync $distPath "s3://$FrontendBucket/" --delete --region $Region | Out-Host
 }
 
 function Invalidate-CloudFront {
     param([string]$DistributionId)
 
-    Write-Stage "刷新 CloudFront ($DistributionId)"
+    Write-Stage "Invalidating CloudFront ($DistributionId)"
     aws cloudfront create-invalidation `
         --distribution-id $DistributionId `
         --paths "/*" | Out-Host
@@ -147,8 +145,8 @@ try {
     Deploy-Frontend -FrontendDir $FrontendDir -FrontendBucket $FrontendBucket -Region $Region
     Invalidate-CloudFront -DistributionId $CloudFrontDistributionId
 
-    Write-Stage "部署完成"
-    Write-Host "请访问环境健康检查 (http://<EB CNAME>/health) 与前端域名确认服务可用。" -ForegroundColor Green
+    Write-Stage "Deployment complete"
+    Write-Host "Check backend health at http://<EB CNAME>/health and verify the frontend after cache invalidation." -ForegroundColor Green
 }
 catch {
     Write-Error $_
@@ -159,5 +157,3 @@ finally {
         Remove-Item $BackendZip -Force
     }
 }
-
-
