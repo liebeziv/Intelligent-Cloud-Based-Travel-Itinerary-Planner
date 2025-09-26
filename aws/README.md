@@ -1,7 +1,7 @@
 * **Project:** Intelligent Travel Planner
 * **Account:** `849354442724`
 * **Region:** `us-east-1`
-
+---
 
 # Elastic Beanstalk Environment
 * **Application Name:** `travel-planner-backend`
@@ -10,8 +10,6 @@
 * **Instance Type:** `t3.micro`
 * **Deployment Status:** `deployed`
 * **Environment Type:** `SingleInstance` (Load Balanced)
-```
-
 ---
 
 # S3 + CloudFront
@@ -65,18 +63,6 @@ Created 4 SNS topics with email subscriptions for different purposes:
 - **IAM Integration**: Backend role has publish permissions to all topics
 - **Error Handling**: Built-in retry mechanism for failed message delivery
 - **Monitoring**: CloudWatch integration for alarm notifications
-
-## Deployment
-```bash
-# Deploy SNS notifications
-aws cloudformation deploy \
-  --stack-name trip-planner-sns \
-  --template-file sns-notifications.yaml \
-  --region us-east-1 \
-  --parameter-overrides \
-    NotificationEmail="sc1040@students.waikato.ac.nz" \
-    AlertEmail="sc1040@students.waikato.ac.nz"
-```
 
 ---
 
