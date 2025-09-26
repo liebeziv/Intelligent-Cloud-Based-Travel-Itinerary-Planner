@@ -1,141 +1,129 @@
-#  Intelligent Cloud-Based Travel Itinerary Planner
+﻿# Intelligent Cloud-Based Travel Itinerary Planner
 
-## Project Overview
+An AI-powered travel planner for New Zealand that combines tourism datasets, live weather, and user preferences to build personalised itineraries. The system is split into a Vue.js single-page app and a FastAPI backend deployed on AWS.
 
-The Intelligent Cloud-Based Travel Itinerary Planner is an AI-powered travel planning application focused on New Zealand tourism. This project integrates multi-source data (official tourism data, real-time weather information, geographic location data, and user preferences) and utilizes machine learning algorithms to provide personalized travel recommendations and intelligent route planning for users.
+## Architecture at a Glance
 
-###  Core Features
-- **Intelligent Recommendations**: Personalized attraction recommendations based on user preferences and real-time data
-- **Dynamic Adjustments**: Automatic itinerary optimization based on weather changes and real-time conditions
-- **Route Planning**: Intelligent travel route optimization algorithms
-- **Real-time Data**: Integration of weather, traffic, and local activity information
-- **Cloud Security**: Enterprise-level cloud security protection and data encryption
+| Layer | Service | Purpose |
+|-------|---------|---------|
+| CDN & Routing | **Amazon CloudFront** (`EIQO53JTN0IXU`) | Serves the Vue build from S3 and proxies `/api/*` traffic to the backend. |
+| Static Hosting | **Amazon S3** (`travel-planner-frontend-849354442724-lz`) | Stores the compiled frontend bundle. |
+| Backend Runtime | **AWS Elastic Beanstalk** -> EC2 | Runs the FastAPI application (`travel-planner-prod` environment). |
+| Persistence | **Amazon DynamoDB** (`trip-planner-users-849354442724`, `trip-planner-itineraries-849354442724`) | Persists account data and saved itineraries. |
+| Object Archive | **Amazon S3** (`travel-planner-assets-849354442724`) | Stores itinerary JSON exports and other generated artifacts. |
+| Monitoring | **Amazon CloudWatch** | Receives metrics/logs from the EB environment. |
 
-###  Project Highlights
--  **AI-Driven**: Machine learning recommendation algorithms
--  **Cloud-Native**: Complete AWS cloud service architecture
--  **Security-First**: Multi-layer cloud security protection system
--  **Responsive**: Support for desktop and mobile access
--  **Real-time**: Dynamic data updates and itinerary adjustments
+> Back-end EC2 instances use ephemeral storage; anything that must persist long term lives in DynamoDB or S3.
 
----
+## Technology Stack
 
-## 🛠️ Technology Stack
+### Frontend
+- Vue 3 + Vite
+- Bootstrap 5
+- Leaflet.js for map visualisations
+- Axios for REST calls
 
-### Frontend Technology Stack
-```javascript
-Vue.js 3          // Progressive JavaScript framework
-Bootstrap 5       // Responsive CSS framework
-Leaflet.js        // Lightweight mapping library
-Axios             // HTTP client
-Vite              // Build tool
+### Backend
+- Python 3.11
+- FastAPI / Uvicorn
+- boto3 for AWS integration
+- DynamoDB for persistence with client-side encryption wrappers
+
+## Repository Layout
+
+```
+app/                     # FastAPI application modules
+frontend/                # Vue SPA source
+aws/                     # CloudFormation samples
+scripts/                 # Helper scripts (PowerShell deployment, etc.)
+deploy.ps1               # End-to-end deployment helper
+Procfile                 # EB entry point (gunicorn command)
+requirements.txt         # Backend dependencies
 ```
 
-### Backend Technology Stack
-```python
-Python 3.9+       // Backend development language
-FastAPI           // Modern high-performance web framework
-Uvicorn           // ASGI server
-```
+## Local Development
 
-Note: DynamoDB is the primary persistence layer. Legacy SQLAlchemy models were archived to `archive/models_sqlalchemy.py` for reference only and are not used at runtime.
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- AWS credentials (if you plan to hit live DynamoDB/S3)
 
-### Data Storage
-```text
-DynamoDB         // Primary database for user data and itineraries
-S3               // Object storage for assets and static files
-```
-
-### Development Tools
+### Backend
 ```bash
-Git & GitHub      // Version control
-Docker            // Containerization
-Postman           // API testing
-VS Code           // Development environment
+python -m venv .venv
+. .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
 ```
 
----
+Set these environment variables (or create a `.env`) when running locally:
+```
+AWS_REGION=us-east-1
+DYNAMODB_USERS_TABLE=trip-planner-users-849354442724
+DYNAMODB_ITINERARIES_TABLE=trip-planner-itineraries-849354442724
+SECRET_KEY=replace-me
+```
+If you do not want to connect to production tables, adjust the names or use DynamoDB Local.
 
-## ☁️ AWS Cloud Services Application
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The Vite dev server proxies API calls to the backend (`http://localhost:8000`).
 
-Our application fully leverages 8 core AWS services to build a complete cloud-native architecture:
+## Deployment
 
-### 1.  Amazon EC2 (Elastic Compute Cloud)
-**Purpose**: Application server hosting
-- Host FastAPI backend applications
-- Handle user requests and business logic
-- Support elastic scaling and load balancing
+### Automated Deployment (PowerShell)
+`deploy.ps1` zips the backend, publishes a new EB application version, uploads the Vue build to S3, and invalidates CloudFront.
 
-### 2.  Amazon S3 (Simple Storage Service)
-**Purpose**: Object storage service
-- Store user-uploaded images and files
-- Static website resource hosting
-- Data backup and archiving
+```powershell
+pwsh ./deploy.ps1 \
+  -Region us-east-1 \
+  -EbApplicationName travel-planner-backend \
+  -EbEnvironmentName travel-planner-prod \
+  -EbDeploymentBucket travel-planner-deploy-849354442724 \
+  -FrontendBucket travel-planner-frontend-849354442724-lz \
+  -CloudFrontDistributionId EIQO53JTN0IXU
+```
+Parameters:
+- `-EbDeploymentBucket` is the S3 bucket that stores Elastic Beanstalk application versions.
+- `-FrontendBucket` is the static hosting bucket (`travel-planner-frontend-849354442724-lz`).
+- `-CloudFrontDistributionId` is the distribution serving the site.
 
-### 3.  Elastic Load Balancing
-**Purpose**: Load balancing
-- Distribute user requests to multiple EC2 instances
-- Improve system availability and fault tolerance
-- Support health checks and failover
+### Manual Deployment Checklist
+1. **Backend**
+   - Zip `app/`, `main.py`, `requirements.txt`, `.ebextensions`, `Procfile`.
+   - Upload the archive to the deployment bucket and create a new EB application version.
+   - Update `travel-planner-prod` to the new version (`aws elasticbeanstalk update-environment`).
+2. **Frontend**
+   - Run `npm install && npm run build`.
+   - `aws s3 sync frontend/dist s3://travel-planner-frontend-849354442724-lz --delete`.
+   - `aws cloudfront create-invalidation --distribution-id EIQO53JTN0IXU --paths "/*"`.
+3. **Verify**
+   - Check `http://<EB CNAME>/health` for backend status.
+   - Visit `https://aitravelplan.site` in an incognito window after the invalidation completes.
 
-### 4.  Amazon CloudWatch
-**Purpose**: Monitoring and logging
-- Real-time monitoring of system performance metrics
-- Collect and analyze application logs
-- Set up alerts and automated responses
+## Operations & Monitoring
+- Use `aws elasticbeanstalk logs` or the AWS console to review application logs.
+- CloudWatch metrics track CPU usage, latency, and DynamoDB throttling; alarms can be deployed via `aws/cloudwatch-monitoring.yaml`.
+- DynamoDB tables and S3 buckets enforce encryption at rest; rotate credentials via IAM best practices.
 
-### 5.  AWS IAM (Identity and Access Management)
-**Purpose**: Identity and access management
-- Fine-grained permission control
-- API key and access credential management
-- Multi-factor authentication
+## Useful References
+- `aws/dynamodb-tables.yaml` - sample CloudFormation for provisioning the DynamoDB tables.
+- `aws/cloudfront-api-routing.yaml` - CloudFront configuration used in production.
+- `app/services/dynamodb_repository.py` - itinerary persistence layer (encryption + data access patterns).
 
-### 6.  Amazon CloudFront
-**Purpose**: Content delivery network
-- Global CDN acceleration for static resources
-- Reduce latency and improve user experience
-- Cache optimization and bandwidth savings
-
-### 7.  Amazon SNS (Simple Notification Service)
-**Purpose**: Message notification service
-- Send itinerary change notifications
-- Weather alerts and reminders
-- System status notifications
-
-### 8.  AWS Secrets Manager
-**Purpose**: Key management service
-- Securely store API keys and database credentials
-- Automatic key rotation
-- Prevent sensitive information leakage
-
----
-
-##  Project Management
-
-### Trello Project Board
-🔗 **Project Management Link**: https://trello.com/b/80RlBs5c/527-project
-
-The board includes the following lists:
-- ** Requirements Analysis** - Functional requirements and user stories
-- ** Architecture Design** - System design and technology selection
-- ** In Development** - Ongoing development tasks
-- ** Testing Phase** - Quality assurance and testing tasks
-- ** Deployment** - Deployment and operations tasks
-- ** Completed** - Completed milestones
+## Contributing
+1. Create a feature branch.
+2. Run backend unit tests (if present) and `npm run build` for the frontend.
+3. Submit a pull request with a clear description and screenshots/logs where relevant.
 
 ---
 
-##  Team Members
+For questions or deployment assistance, contact the infrastructure maintainer or open an issue in this repository.
 
-| Name | Student ID | Role | Main Responsibilities |
-|------|------------|------|----------------------|
-| Aliyyan Wijaya | 1670316 | Frontend Development Engineer | Vue.js development, UI/UX design |
-| Bai Lu | 1671298 | Project Manager | Project management, documentation |
-| Jibin Xue | 1664138 | Backend Development Engineer | FastAPI development, database design |
-| Simin Cheng | 1663732 | Cloud Infrastructure Engineer | AWS deployment, security configuration |
-| Zhengrong Chen | 1660321 | AI/Data Engineer | Recommendation algorithms, data analysis |
-| Ziqi Lin | 1674249 | Quality Assurance Engineer | Testing, integration verification |
 
----
 
-Let's create an intelligent travel experience together!
+

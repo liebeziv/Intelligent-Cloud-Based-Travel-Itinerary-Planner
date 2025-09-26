@@ -619,25 +619,18 @@ export default {
         this.summary = null
 
         const payload = {
-          user_id: this.getUserId(),
+          destination: this.location.address,
+          start_date: new Date().toISOString().split('T')[0], // 今天的日期
+          end_date: new Date(Date.now() + this.preferences.duration * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 结束日期
+          budget: this.preferences.budget_range[1], // 使用最大预算
+          travelers: this.preferences.group_size || 1,
           preferences: {
-            activity_types: this.preferences.activity_types,
-            budget_range: this.preferences.budget_range,
-            travel_style: this.preferences.travel_style,
-            difficulty_preference: this.preferences.difficulty_preference,
-            group_size: this.preferences.group_size,
-            duration: this.preferences.duration,
-            max_travel_distance: this.preferences.max_travel_distance
-          },
-          current_location: {
-            lat: this.location.lat,
-            lng: this.location.lng,
-            address: this.location.address
-          },
-          top_k: Math.max(this.preferences.duration * 3, 8),
-          exclude_visited: [],
-          save: this.isLoggedIn
-        }
+            activities: this.preferences.activity_types,
+            pace: "moderate"
+        },
+        accommodation_type: "hotel",
+        transport_mode: "public"
+      }
 
         const response = await itineraryAPI.plan(payload)
         const data = response.data ?? response

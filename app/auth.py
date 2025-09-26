@@ -24,26 +24,9 @@ def _get_user_from_dynamo(raw_email: str):
         return None
     try:
         table = aws_services.dynamodb.Table(settings.DYNAMODB_USERS_TABLE)
+  
         response = table.get_item(Key={'id': raw_email})
-        item = response.get('Item')
-        if item:
-            return item
-        # fallback query on GSI in case legacy records used random ids
-        try:
-            response = table.query(
-                IndexName='email-index',
-                KeyConditionExpression=Key('email').eq(raw_email),
-                Limit=1
-            )
-            items = response.get('Items')
-            return items[0] if items else None
-        except Exception:
-            response = table.scan(
-                FilterExpression=Attr('email').eq(raw_email),
-                Limit=1
-            )
-            items = response.get('Items')
-            return items[0] if items else None
+        return response.get('Item')
     except Exception as exc:
         logger.warning("DynamoDB user lookup error: %s", exc)
         return None

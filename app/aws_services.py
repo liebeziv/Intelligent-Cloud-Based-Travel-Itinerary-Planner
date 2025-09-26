@@ -6,7 +6,7 @@ try:
     from .config import settings
 except ImportError as e:
     print(f"Config import error: {e}")
-    # 使用环境变量作为后备
+   
     class FallbackSettings:
         AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
         AWS_ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID", "849354442724")

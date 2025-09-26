@@ -430,7 +430,10 @@ def create_itinerary(payload: ItineraryRequest, current_user=Depends(auth.get_cu
 
         # Upload to S3
         if s3utils:
-            s3utils.put_json_object(key, obj)
+            try:
+                s3utils.put_json_object(key, obj)
+            except Exception as exc:
+                logger.warning("Failed to upload itinerary archive %s: %s", key, exc)
         # Send SNS notification
         if sns_utils:
             sns_utils.publish(f"New itinerary {it_id} by {current_user['email']}", subject="Itinerary Created")
