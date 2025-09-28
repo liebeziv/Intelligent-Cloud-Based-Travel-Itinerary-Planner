@@ -2,19 +2,6 @@
 
 An AI-powered travel planner for New Zealand that combines tourism datasets, live weather, and user preferences to build personalised itineraries. The system is split into a Vue.js single-page app and a FastAPI backend deployed on AWS.
 
-## Architecture at a Glance
-
-| Layer | Service | Purpose |
-|-------|---------|---------|
-| CDN & Routing | **Amazon CloudFront** (`EIQO53JTN0IXU`) | Serves the Vue build from S3 and proxies `/api/*` traffic to the backend. |
-| Static Hosting | **Amazon S3** (`travel-planner-frontend-849354442724-lz`) | Stores the compiled frontend bundle. |
-| Backend Runtime | **AWS Elastic Beanstalk** -> EC2 | Runs the FastAPI application (`travel-planner-prod` environment). |
-| Persistence | **Amazon DynamoDB** (`trip-planner-users-849354442724`, `trip-planner-itineraries-849354442724`) | Persists account data and saved itineraries. |
-| Object Archive | **Amazon S3** (`travel-planner-assets-849354442724`) | Stores itinerary JSON exports and other generated artifacts. |
-| Monitoring | **Amazon CloudWatch** | Receives metrics/logs from the EB environment. |
-
-> Back-end EC2 instances use ephemeral storage; anything that must persist long term lives in DynamoDB or S3.
-
 ## Technology Stack
 
 ### Frontend
