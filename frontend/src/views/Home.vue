@@ -620,9 +620,9 @@ export default {
 
         const payload = {
           destination: this.location.address,
-          start_date: new Date().toISOString().split('T')[0], // 今天的日期
-          end_date: new Date(Date.now() + this.preferences.duration * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 结束日期
-          budget: this.preferences.budget_range[1], // 使用最大预算
+          start_date: new Date().toISOString().split('T')[0], // today's date
+          end_date: new Date(Date.now() + this.preferences.duration * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // end date
+          budget: this.preferences.budget_range[1], // use max budget
           travelers: this.preferences.group_size || 1,
           preferences: {
             activities: this.preferences.activity_types,
