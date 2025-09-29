@@ -329,7 +329,7 @@ export default {
           category: 'urban',
           rating: 4.7,
           price_range: [35, 85],
-          image: '/images/skyline-gondola.webp',
+          image: '/images/sky-tower.webp',
           region: 'Auckland',
           location: { lat: -36.8485, lng: 174.7633 }
         },
@@ -340,7 +340,7 @@ export default {
           category: 'cultural',
           rating: 4.6,
           price_range: [0, 40],
-          image: '/images/milford-sound.webp',
+          image: '/images/te-papa.webp',
           region: 'Wellington',
           location: { lat: -41.2905, lng: 174.7821 }
         },
@@ -351,7 +351,7 @@ export default {
           category: 'natural',
           rating: 4.5,
           price_range: [110, 210],
-          image: '/images/skyline-gondola.webp',
+          image: '/images/te-puia.webp',
           region: 'Rotorua',
           location: { lat: -38.144, lng: 176.2502 }
         },
@@ -362,7 +362,7 @@ export default {
           category: 'natural',
           rating: 4.7,
           price_range: [0, 20],
-          image: '/images/milford-sound.webp',
+          image: '/images/botanic-gardens.webp',
           region: 'Christchurch',
           location: { lat: -43.5309, lng: 172.6271 }
         },
@@ -384,18 +384,18 @@ export default {
           category: 'cultural',
           rating: 4.8,
           price_range: [150, 260],
-          image: '/images/milford-sound.webp',
+          image: '/images/hobbiton.webp',
           region: 'Waikato',
           location: { lat: -37.8722, lng: 175.6823 }
         }
       ],
       fallbackAttractionImages: {
-        'AKL_SKY_TOWER': '/images/skyline-gondola.webp',
-        'WLG_TE_PAPA': '/images/milford-sound.webp',
-        'ROT_TE_PUIA': '/images/skyline-gondola.webp',
-        'CHC_BOTANIC': '/images/milford-sound.webp',
+        'AKL_SKY_TOWER': '/images/sky-tower.webp',
+        'WLG_TE_PAPA': '/images/te-papa.webp',
+        'ROT_TE_PUIA': '/images/te-puia.webp',
+        'CHC_BOTANIC': '/images/botanic-gardens.webp',
         'ZQN_SKYLINE': '/images/skyline-gondola.webp',
-        'WKO_HOBBITON': '/images/milford-sound.webp'
+        'WKO_HOBBITON': '/images/hobbiton.webp'
       }
     }
   },
